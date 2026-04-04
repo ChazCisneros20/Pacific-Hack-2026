@@ -64,6 +64,8 @@
   .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220, 100, 20, 0.35); }
   .nav-btn.secondary { background: rgba(0,0,0,.05); color: #1a1a1a; margin-top: 6px; }
   .nav-btn.secondary:hover { background: rgba(0,0,0,.1); }
+  .event-dropdown { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; background: rgba(255,255,255,.96); box-shadow: 0 8px 18px rgba(0,0,0,.08); }
+  .event-dropdown select { width: 100%; border: none; outline: none; appearance: none; -webkit-appearance: none; background: transparent; }
   .nav-status { margin-top: 12px; padding: 10px; background: rgba(220, 100, 20, 0.1); border-left: 3px solid #dc6414; border-radius: 4px; font-size: 11px; line-height: 1.4; color: rgba(0,0,0,.8); transition: opacity .3s; }
   .nav-status.hidden { display: none; }
   .nav-status.flash { animation: statusFlash .5s ease; }
@@ -130,6 +132,14 @@
 
   <button class="nav-btn" onclick="getAgentDirections()" style="margin-top:12px">🤖 Get AI Directions</button>
   <button class="nav-btn secondary" onclick="clearRoute()">Clear</button>
+
+  <div class="nav-input-group" style="margin-top: 14px;">
+    <label>Find Campus Events</label>
+    <button class="nav-btn secondary" style="width:100%; text-align:left; justify-content:flex-start;" onclick="toggleEventDropdown()">Select month</button>
+    <div id="event-dropdown" class="event-dropdown" style="display:none; margin-top:8px;">
+      <select id="event-month" style="width:100%; padding:10px 12px; border:1px solid rgba(0,0,0,.1); border-radius:8px; background:#fff; color:#1a1a1a; font-size:13px;"></select>
+    </div>
+  </div>
 
   <div id="nav-status" class="nav-status hidden"></div>
 
@@ -854,6 +864,21 @@ function setNavClickMode(mode) {
   setTimeout(() => indicator.classList.remove('visible'), 2000);
 }
 
+function toggleEventDropdown() {
+  const dropdown = document.getElementById('event-dropdown');
+  if (!dropdown) return;
+  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+function populateEventMonths() {
+  const monthSelect = document.getElementById('event-month');
+  if (!monthSelect) return;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const startIndex = new Date().getMonth();
+  monthSelect.innerHTML = months.slice(startIndex).map(m => `<option value="${m.toLowerCase()}">${m}</option>`).join('');
+}
+
+
 function setNavPoint(x, z, label, isStart) {
   const point = { x, z, label };
 
@@ -1246,6 +1271,7 @@ createAllBuildings();  // Buildings second
 buildNavigationGraph(); // FIX #4: Nav graph LAST (needs allBuildingData populated)
 addTowerGlow();
 initSearch();
+populateEventMonths();
 
 window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('click', onClick);
