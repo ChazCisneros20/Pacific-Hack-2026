@@ -18,15 +18,37 @@ An intelligent campus navigation application for the University of the Pacific S
 - [Ollama](https://ollama.ai/) installed and running locally
 - The Gemma3 model pulled: `ollama pull gemma3:latest`
 
-### 2. Install Dependencies
+### 2. Environment Setup
 
-Install the required Python packages:
+Run the setup script to create a virtual environment and install dependencies:
 
-```bash
-pip install -r requirements.txt
+**On Windows (PowerShell):**
+```powershell
+.\scripts\setup_env.ps1
 ```
 
-### 3. Pull the AI Model
+**On macOS/Linux (Bash):**
+```bash
+./scripts/setup_env.sh
+```
+
+This will create a `.venv` virtual environment and install all required packages.
+
+### 3. Activate the Virtual Environment
+
+After setup, activate the virtual environment:
+
+**On Windows (PowerShell):**
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+**On macOS/Linux (Bash):**
+```bash
+source .venv/bin/activate
+```
+
+### 4. Pull the AI Model
 
 Ensure Ollama is running and pull the Gemma3 model:
 
@@ -38,12 +60,38 @@ ollama pull gemma3:latest
 
 ### Start the Web Application
 
-Run the 3D campus map with AI navigation:
+After setting up the environment, you can run the application using the provided scripts:
 
-```bash
-cd src
-python app.py
+**On Windows (PowerShell):**
+```powershell
+.\run.ps1
 ```
+
+**On macOS/Linux (Bash):**
+```bash
+./run.sh
+```
+
+Alternatively, manually activate the virtual environment and run:
+
+1. Activate the virtual environment:
+
+   **On Windows (PowerShell):**
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+   **On macOS/Linux (Bash):**
+   ```bash
+   source .venv/bin/activate
+   ```
+
+2. Run the app:
+
+   ```bash
+   cd src
+   python app.py
+   ```
 
 Then visit:
 - **3D Campus Map**: http://localhost:8000

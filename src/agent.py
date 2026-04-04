@@ -115,6 +115,8 @@ def get_directions(user_question: str) -> str:
                     "4. Provide clear, step-by-step directions based on what you see in the map and know from the context\n"
                     "5. Include landmark references and estimated walking distances when helpful\n"
                     "6. Be friendly and encouraging in your tone\n\n"
+                    "Important: respond only in English. Do not use any Chinese characters or any other language. "
+                    "If the user asks in another language, translate the question into English and answer in English. "
                     "Always base your directions on the visual map image, supplemented by any text context provided. "
                     "Respond with clear, step-by-step directions in English."
                 )

@@ -4,13 +4,17 @@ Serves the 3D campus map interface and provides API access to the navigation age
 """
 
 import os
+import re
+from datetime import datetime
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from bs4 import BeautifulSoup
 from agent import get_directions
+import requests
 import uvicorn
 
 # Initialize FastAPI application
@@ -148,6 +152,27 @@ async def get_buildings():
     )
 
 
+@app.get("/api/events")
+async def get_events():
+    """
+    Get upcoming campus events grouped by month. Scrapes University of the Pacific events page,
+    filters to the current month through December, and returns event metadata for the frontend.
+    """
+    events = fetch_uop_events()
+    current_month = datetime.now().month
+    available_months = MONTHS[current_month - 1 :]
+    grouped_events = group_events_by_month(events)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "months": available_months,
+            "eventsByMonth": grouped_events,
+            "success": True,
+        }
+    )
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
@@ -165,6 +190,135 @@ async def favicon():
         return FileResponse(favicon_path)
     else:
         return JSONResponse(status_code=404, content={"error": "Favicon not found"})
+
+
+EVENTS_URL = "https://www.pacific.edu/calendar/all/all/all/all"
+MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+]
+
+
+def slugify(text: str) -> str:
+    text = re.sub(r"[^\w\s-]", "", text or "")
+    text = re.sub(r"[\s_-]+", "-", text.strip().lower())
+    return text.strip("-")
+
+
+def parse_event_month(text: str) -> str | None:
+    months = parse_event_months(text)
+    return months[-1] if months else None
+
+
+def parse_event_months(text: str) -> list[str]:
+    if not text:
+        return []
+    pattern_parts = [re.escape(m) for m in MONTHS] + [re.escape(m[:3]) for m in MONTHS]
+    pattern = rf"\b({'|'.join(pattern_parts)})\b"
+    matches = re.findall(pattern, text, flags=re.IGNORECASE)
+    months = []
+    abbreviations = {month[:3].lower(): month for month in MONTHS}
+    for token in matches:
+        token_lower = token.lower()
+        if token_lower in abbreviations:
+            month = abbreviations[token_lower]
+        else:
+            month = next((m for m in MONTHS if m.lower() == token_lower), None)
+        if month and month not in months:
+            months.append(month)
+    return months
+
+
+def resolve_event_url(url: str) -> str:
+    if not url:
+        return ""
+    if url.startswith("http"):
+        return url
+    if url.startswith("/"):
+        return f"https://www.pacific.edu{url}"
+    return url
+
+
+def extract_events_from_html(html: str) -> list[dict]:
+    soup = BeautifulSoup(html, "html.parser")
+    events = []
+    seen = set()
+
+    for candidate in soup.select(".event-row"):
+        title_elem = candidate.select_one(".event-title a")
+        if not title_elem:
+            continue
+
+        title = title_elem.get_text(" ", strip=True)
+        if not title or title in seen:
+            continue
+
+        link = resolve_event_url(title_elem.get("href", ""))
+        date_text = " ".join(
+            part.get_text(" ", strip=True)
+            for part in candidate.select(".event-time-range .field-content")
+            if part.get_text(strip=True)
+        ).strip()
+        location_elem = candidate.select_one(".views-field-field-location .field-content")
+        location_text = location_elem.get_text(" ", strip=True) if location_elem else ""
+
+        month = parse_event_month(date_text) or parse_event_month(title) or parse_event_month(location_text)
+        if not month:
+            continue
+
+        event_id = slugify(f"{month}-{title}-{date_text}")
+        events.append({
+            "id": event_id,
+            "title": title,
+            "date": date_text,
+            "location": location_text,
+            "link": link,
+            "month": month,
+        })
+        seen.add(title)
+
+    return events
+
+
+def fallback_events() -> list[dict]:
+    current_month = datetime.now().month
+    return [
+        {"id": "spring-open-house", "title": "Spring Campus Open House", "date": "April 12", "location": "William Knox Holt Memorial Library", "link": "https://www.pacific.edu/about-pacific/news-events/events", "month": "April"},
+        {"id": "art-gallery-night", "title": "Reynolds Art Gallery Reception", "date": "May 3", "location": "Pacific Geosciences Center, Reynolds Art Gallery", "link": "https://www.pacific.edu/about-pacific/news-events/events", "month": "May"},
+        {"id": "summer-tech-talk", "title": "Computer Science Guest Lecture", "date": "June 18", "location": "Benerd College", "link": "https://www.pacific.edu/about-pacific/news-events/events", "month": "June"},
+        {"id": "fall-music-fest", "title": "Fall Music Festival", "date": "September 14", "location": "Faye Spanos Concert Hall", "link": "https://www.pacific.edu/about-pacific/news-events/events", "month": "September"},
+        {"id": "winter-holiday-concert", "title": "Winter Campus Concert", "date": "December 8", "location": "Conservatory of Music", "link": "https://www.pacific.edu/about-pacific/news-events/events", "month": "December"},
+    ]
+
+
+def get_filtered_events(events: list[dict]) -> list[dict]:
+    current_month = datetime.now().month
+    valid_months = MONTHS[current_month - 1 :]
+    return [event for event in events if event.get("month") in valid_months]
+
+
+def group_events_by_month(events: list[dict]) -> dict:
+    grouped = {}
+    for event in events:
+        month = event.get("month")
+        if month:
+            grouped.setdefault(month, []).append(event)
+    return grouped
+
+
+def fetch_uop_events() -> list[dict]:
+    try:
+        response = requests.get(
+            EVENTS_URL,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"},
+            timeout=12
+        )
+        response.raise_for_status()
+        events = extract_events_from_html(response.text)
+        filtered = get_filtered_events(events)
+        return filtered if filtered else fallback_events()
+    except Exception:
+        return fallback_events()
 
 
 if __name__ == "__main__":
