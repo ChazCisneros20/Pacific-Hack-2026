@@ -126,11 +126,26 @@
   <h3>🐯 myTigerTrail Navigation</h3>
 
   <div class="nav-input-group">
-    <label>Ask for Directions</label>
-    <textarea id="nav-question" placeholder="How do I get from the library to the science building?" rows="3" style="width: 100%; padding: 8px 10px; background: rgba(0,0,0,.02); border: 1px solid rgba(0,0,0,.1); border-radius: 6px; color: #1a1a1a; font-size: 12px; outline: none; resize: vertical; min-height: 60px;"></textarea>
+    <label>From</label>
+    <input type="text" id="nav-from" placeholder="Click a building to set start…" readonly style="cursor:pointer;width:100%;padding:8px 10px;background:rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.1);border-radius:6px;color:#1a1a1a;font-size:12px;outline:none;">
   </div>
+  <div class="nav-input-group">
+    <label>To</label>
+    <input type="text" id="nav-to" placeholder="Click a building to set end…" readonly style="cursor:pointer;width:100%;padding:8px 10px;background:rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.1);border-radius:6px;color:#1a1a1a;font-size:12px;outline:none;">
+  </div>
+  <div class="nav-mode-btns">
+    <button id="btn-set-start" class="active" onclick="setNavClickMode('start')">📍 Set Start</button>
+    <button id="btn-set-end" onclick="setNavClickMode('end')">🏁 Set End</button>
+  </div>
+  <button class="nav-btn" onclick="calculateRoute()" style="margin-top:10px">🗺️ Show Route</button>
 
-  <button class="nav-btn" onclick="getAgentDirections()" style="margin-top:12px">🤖 Get AI Directions</button>
+  <div style="margin:12px 0;border-top:1px solid rgba(0,0,0,.08);"></div>
+
+  <div class="nav-input-group">
+    <label>Ask AI for Directions</label>
+    <textarea id="nav-question" placeholder="How do I get from the library to the science building?" rows="2" style="width:100%;padding:8px 10px;background:rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.1);border-radius:6px;color:#1a1a1a;font-size:12px;outline:none;resize:vertical;min-height:48px;"></textarea>
+  </div>
+  <button class="nav-btn" onclick="getAgentDirections()" style="margin-top:8px">🤖 Get AI Directions</button>
   <button class="nav-btn secondary" onclick="clearRoute()">Clear</button>
 
   <div class="nav-input-group" style="margin-top: 14px;">
@@ -144,7 +159,7 @@
   <div id="nav-status" class="nav-status hidden"></div>
 
   <div id="route-info" class="route-info hidden">
-    <div class="distance" id="route-distance">AI Directions</div>
+    <div class="distance" id="route-distance">Route</div>
     <div class="eta" id="route-eta">Powered by myTigerTrail</div>
     <div class="route-steps" id="route-steps"></div>
   </div>
@@ -575,29 +590,30 @@ function createAllBuildings() {
 // ═══════════════════════════════════════════════════════════════
 
 const pathDefinitions = [
-  { x:5,   z:-5,  w:1.4, d:58,  label:'Atchley Way (N-S spine)' },
-  { x:5,   z:14,  w:36,  d:1.4, label:'Dave Brubeck Way' },
-  { x:-3,  z:5,   w:1.2, d:34,  label:'Stagg Way' },
-  { x:18,  z:6,   w:22,  d:1.2, label:'Burcham Walkway' },
-  { x:18,  z:-5,  w:18,  d:1.0, label:'Chapel Lane' },
-  { x:5,   z:-25, w:60,  d:1.2, label:'Brookside Road (E-W)' },
-  { x:-14, z:-8,  w:1.2, d:22,  label:'West Campus Road' },
-  { x:8,   z:20,  w:1.2, d:18,  label:'Kensington Way' },
-  { x:-10, z:5,   w:1.0, d:18,  label:'Rudkin Way' },
-  { x:-22, z:16,  w:1.0, d:20,  label:'Larry Heller Drive' },
-  { x:30,  z:7,   w:14,  d:1.0, label:'Knoles Way' },
-  { x:20,  z:-18, w:1.2, d:22,  label:'North Campus Drive' },
-  { x:-4,  z:-18, w:34,  d:1.0, label:'Health Sciences Loop' },
-  { x:12,  z:0,   w:16,  d:0.8, label:'Quad East Walk' },
-  { x:-2,  z:-12, w:20,  d:0.8, label:'Presidents Way (Greek Row)' },
-  { x:0,   z:22,  w:22,  d:0.8, label:'South Campus Walk' },
-  { x:-8,  z:-30, w:44,  d:0.9, label:'North Health Connector' },
-  { x:8,   z:-2,  w:0.8, d:12,  label:'Library Walk' },
-  { x:22,  z:-14, w:12,  d:0.8, label:'Residential Row Path' },
-  { x:-16, z:0,   w:0.8, d:22,  label:'Athletic Loop West' },
-  { x:5,   z:7,   w:20,  d:0.8, label:'Burcham–Atchley Cross' },
-  { x:-5,  z:30,  w:22,  d:0.8, label:'South Arts Walk' },
-  { x:14,  z:-8,  w:0.8, d:10,  label:'McCaffrey Connector' },
+  // ── Main N-S spines ──
+  { x:10,  z:5,   w:1.4, d:60,  label:'Atchley Way' },          // real col-6, rows C-H
+  { x:-3,  z:8,   w:1.2, d:46,  label:'Stagg Way' },             // real col-5, rows D-H
+  { x:8,   z:22,  w:1.2, d:22,  label:'Kensington Way' },        // real col-6, south campus
+  { x:-22, z:8,   w:1.0, d:32,  label:'Larry Heller Drive' },    // real west, rows D-H
+  { x:20,  z:-12, w:1.0, d:20,  label:'North Campus Drive' },    // real col-7, rows B-D
+  // ── Main E-W roads ──
+  { x:5,   z:14,  w:46,  d:1.4, label:'Dave Brubeck Way' },      // real row G, cols 2-8
+  { x:12,  z:7,   w:30,  d:1.2, label:'Burcham Walkway' },       // real row F, cols 4-8
+  { x:12,  z:-4,  w:28,  d:1.0, label:'Chapel Lane' },           // real row E, cols 4-8
+  { x:5,   z:-12, w:36,  d:1.0, label:'Presidents Way' },        // real row D, cols 2-8
+  { x:5,   z:-25, w:60,  d:1.2, label:'Brookside Road' },        // real row C, full width
+  // ── Cross-connectors ──
+  { x:28,  z:5,   w:14,  d:1.0, label:'Knoles Way' },            // east campus E-W
+  { x:2,   z:0,   w:1.0, d:30,  label:'Quad Walk (N-S)' },       // connects Burcham to Presidents
+  { x:-4,  z:-18, w:34,  d:1.0, label:'Health Sciences Loop' },  // real row B area
+  { x:-14, z:-8,  w:1.2, d:26,  label:'Manchester Ave' },        // real col-4, rows B-D
+  { x:5,   z:-30, w:44,  d:1.0, label:'North Campus Connector' },// row B
+  // ── South campus ──
+  { x:0,   z:22,  w:24,  d:1.0, label:'South Campus Walk' },
+  { x:-5,  z:30,  w:24,  d:0.9, label:'South Arts Walk' },
+  // ── Athletic area ──
+  { x:-16, z:4,   w:1.0, d:30,  label:'Athletic Loop West' },
+  { x:-8,  z:16,  w:22,  d:1.0, label:'Athletic Connector' },
 ];
 
 function createPaths() {
@@ -619,7 +635,7 @@ function buildNavigationGraph() {
   pathDefinitions.forEach((p, idx) => {
     const isHorizontal = p.w > p.d;
     const length = isHorizontal ? p.w : p.d;
-    const steps = Math.max(2, Math.ceil(length / 8)); // sample every ~8 units
+    const steps = Math.max(3, Math.ceil(length / 5)); // sample every ~5 units for better coverage
 
     for (let s = 0; s < steps; s++) {
       const t = steps === 1 ? 0.5 : s / (steps - 1);
@@ -654,7 +670,7 @@ function buildNavigationGraph() {
     for (let j = i + 1; j < pathNodes.length; j++) {
       if (pathNodes[i].pathIdx === pathNodes[j].pathIdx) continue;
       const dist = Math.hypot(pathNodes[i].x - pathNodes[j].x, pathNodes[i].z - pathNodes[j].z);
-      if (dist < 10) {
+      if (dist < 14) {
         pathGraph.edges.push({ from: pathNodes[i].id, to: pathNodes[j].id, weight: dist });
         pathGraph.edges.push({ from: pathNodes[j].id, to: pathNodes[i].id, weight: dist });
       }
@@ -668,11 +684,11 @@ function buildNavigationGraph() {
     pathGraph.nodes.push(node);
     nodeMap.set(nodeId, node);
 
-    // Connect to the 2 nearest path nodes for redundancy
+    // Connect to the 3 nearest path nodes for redundancy
     const sorted = pathNodes
       .map(n => ({ n, dist: Math.hypot(b.x - n.x, b.z - n.z) }))
       .sort((a, b) => a.dist - b.dist)
-      .slice(0, 2);
+      .slice(0, 3);
 
     sorted.forEach(({ n, dist }) => {
       pathGraph.edges.push({ from: nodeId, to: n.id, weight: dist });
@@ -936,7 +952,15 @@ function setNavPoint(x, z, label, isStart) {
     setNavClickMode('end');
     showStatus('Start set! Now click a building for your destination.');
   } else if (!isStart && startPoint) {
-    showStatus('Both points set! Click "Get Directions".');
+    // Both points set — auto-draw route
+    const path = findPath(startPoint.x, startPoint.z, endPoint.x, endPoint.z);
+    if (path && path.length >= 2) {
+      drawRoute(path);
+      displayRouteInfo(path);
+      showStatus('Route drawn! Click "Show Route" to recalculate.');
+    } else {
+      showStatus('Both points set! Click "Show Route" for directions.');
+    }
   }
 }
 
@@ -951,8 +975,18 @@ function showStatus(msg) {
 }
 
 function calculateRoute() {
-  // Legacy function - now using AI agent instead
-  getAgentDirections();
+  if (!startPoint || !endPoint) {
+    showStatus('Click a building to set start, then click another to set end.');
+    return;
+  }
+  const path = findPath(startPoint.x, startPoint.z, endPoint.x, endPoint.z);
+  if (!path || path.length < 2) {
+    showStatus('No route found between those two points. Try different buildings.');
+    return;
+  }
+  drawRoute(path);
+  displayRouteInfo(path);
+  showStatus('Route drawn on map!');
 }
 
 async function getAgentDirections() {
