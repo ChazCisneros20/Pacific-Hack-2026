@@ -27,7 +27,7 @@ def load_map_image():
     file_size = image_path.stat().st_size
     if file_size > 10 * 1024 * 1024:  # 10MB limit
         print(f"⚠️  Warning: Image file is large ({file_size} bytes), this may affect processing")
-    
+    #The place where we needed to add the code to check if the file is a valid PNG and warn if not 
     try:
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()

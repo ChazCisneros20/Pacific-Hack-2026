@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>University of the Pacific — 3D Campus Map with Navigation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #08090d; font-family: 'DM Sans', sans-serif; color: #e0e0e8; }
+  canvas { display: block; }
+
+  /* ── HUD ── */
+  #hud { position: fixed; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
+  #hud h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.7); }
+  #hud .sub { font-size: 11px; color: rgba(255,255,255,.45); font-family: 'JetBrains Mono', monospace; margin-top: 3px; letter-spacing: 0.5px; }
+
+  /* ── Tooltip ── */
+  #tooltip { position: fixed; padding: 10px 14px; background: rgba(10,10,18,.92); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity .12s ease; z-index: 20; max-width: 260px; }
+  #tooltip.visible { opacity: 1; }
+  #tooltip .name { font-weight: 700; font-size: 13px; color: #fff; }
+  #tooltip .num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.4); margin-top: 1px; }
+  #tooltip .zone { font-size: 11px; margin-top: 4px; padding: 2px 8px; border-radius: 4px; display: inline-block; }
+
+  /* ── Legend ── */
+  #legend { position: fixed; bottom: 20px; left: 20px; z-index: 10; background: rgba(10,10,18,.82); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 14px 16px; font-size: 11px; }
+  #legend h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px; color: rgba(255,255,255,.35); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+  .leg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── Controls hint ── */
+  #controls { position: fixed; bottom: 20px; right: 20px; z-index: 10; font-size: 10px; color: rgba(255,255,255,.25); font-family: 'JetBrains Mono', monospace; text-align: right; line-height: 1.8; }
+
+  /* ── Search ── */
+  #search-box { position: fixed; top: 20px; right: 20px; z-index: 18; }
+  #search-box input { width: 220px; padding: 8px 12px; background: rgba(10,10,18,.8); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color .2s; }
+  #search-box input::placeholder { color: rgba(255,255,255,.3); }
+  #search-box input:focus { border-color: rgba(255,140,50,.5); }
+  #search-results { margin-top: 4px; background: rgba(10,10,18,.92); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; display: none; max-height: 280px; overflow-y: auto; }
+  #search-results.show { display: block; }
+  .sr-item { padding: 7px 12px; font-size: 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.04); transition: background .15s; }
+  .sr-item:hover { background: rgba(255,255,255,.06); }
+  .sr-item:last-child { border-bottom: none; }
+  .sr-item .sr-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.35); margin-right: 6px; }
+
+  /* ── Loader ── */
+  #loader { position: fixed; inset: 0; z-index: 999; background: #08090d; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s ease; }
+  #loader.fade { opacity: 0; pointer-events: none; }
+  #loader h2 { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  #loader p { font-size: 12px; color: rgba(255,255,255,.4); font-family: 'JetBrains Mono', monospace; }
+  .spinner { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: #f47920; border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Navigation Panel ── */
+  #nav-panel { position: fixed; top: 64px; right: 20px; width: 260px; background: rgba(10,10,18,.92); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 16px; z-index: 15; transition: transform .3s ease, opacity .3s ease; }
+  #nav-panel.collapsed { transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none; }
+  #nav-toggle { position: fixed; top: 20px; right: 250px; width: 36px; height: 36px; background: rgba(245, 158, 11, 0.9); border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 16; transition: all .2s; }
+  #nav-toggle:hover { transform: scale(1.05); background: rgba(245, 158, 11, 1); }
+  #nav-toggle svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; }
+  #nav-panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #fff; display: flex; align-items: center; gap: 8px; }
+  #nav-panel h3::before { content: "→"; color: #f59e0b; font-weight: 700; }
+  .nav-input-group { margin-bottom: 10px; }
+  .nav-input-group label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.5); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .nav-input-group input { width: 100%; padding: 8px 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; color: #fff; font-size: 12px; outline: none; }
+  .nav-input-group input:focus { border-color: rgba(245, 158, 11, 0.5); }
+  .nav-btn { width: 100%; padding: 10px; margin-top: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: 12px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; }
+  .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
+  .nav-btn.secondary { background: rgba(255,255,255,.1); margin-top: 6px; }
+  .nav-btn.secondary:hover { background: rgba(255,255,255,.15); }
+  .nav-status { margin-top: 12px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 11px; line-height: 1.4; color: rgba(255,255,255,.8); transition: opacity .3s; }
+  .nav-status.hidden { display: none; }
+  .nav-status.flash { animation: statusFlash .5s ease; }
+  @keyframes statusFlash { 0%,100%{background:rgba(245,158,11,.1)} 50%{background:rgba(245,158,11,.3)} }
+  .route-info { margin-top: 12px; padding: 12px; background: rgba(255,255,255,.05); border-radius: 8px; font-size: 11px; }
+  .route-info.hidden { display: none; }
+  .route-info .distance { font-size: 18px; font-weight: 700; color: #f59e0b; margin-bottom: 4px; }
+  .route-info .eta { color: rgba(255,255,255,.6); font-size: 11px; }
+  .route-steps { margin-top: 8px; max-height: 150px; overflow-y: auto; }
+  .step { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.05); display: flex; gap: 8px; align-items: flex-start; }
+  .step:last-child { border-bottom: none; }
+  .step-num { width: 16px; height: 16px; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-text { flex: 1; line-height: 1.3; }
+
+  /* ── Nav mode selector ── */
+  .nav-mode-btns { display: flex; gap: 4px; margin-top: 8px; }
+  .nav-mode-btns button { flex: 1; padding: 7px 4px; font-size: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 6px; color: rgba(255,255,255,.6); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+  .nav-mode-btns button:hover { background: rgba(255,255,255,.1); }
+  .nav-mode-btns button.active { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b; }
+
+  /* ── Mode indicator ── */
+  #mode-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10,10,18,.95); border: 1px solid rgba(245, 158, 11, 0.5); padding: 20px 30px; border-radius: 12px; pointer-events: none; opacity: 0; transition: opacity .3s; z-index: 100; text-align: center; }
+  #mode-indicator.visible { opacity: 1; }
+  #mode-indicator h4 { color: #f59e0b; font-size: 14px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px; }
+  #mode-indicator p { color: rgba(255,255,255,.7); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="loader"><div class="spinner"></div><h2>University of the Pacific</h2><p>building 3d campus…</p></div>
+
+<div id="hud">
+  <h1>University of the Pacific</h1>
+  <div class="sub">3601 Pacific Ave, Stockton CA · 3D Campus Map</div>
+</div>
+
+<div id="tooltip"><div class="name"></div><div class="num"></div><div class="zone"></div></div>
+
+<div id="legend">
+  <h3>Campus Zones</h3>
+  <div class="leg-row"><div class="leg-dot" style="background:#c8a96e"></div> Central Campus</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#b05a3a"></div> Residential / Greek</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#5577bb"></div> South Campus</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#e88430"></div> Athletic Campus</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#5a8f5a"></div> Athletic Fields</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#8b6aad"></div> North Campus / Health</div>
+</div>
+
+<div id="controls">orbit · drag<br>zoom · scroll<br>pan · right-drag<br>click · building info<br>search · top right<br><b style="color:#f59e0b">nav · click route button</b></div>
+
+<div id="search-box">
+  <input type="text" id="search-input" placeholder="Search buildings…">
+  <div id="search-results"></div>
+</div>
+
+<!-- Navigation UI -->
+<button id="nav-toggle" onclick="toggleNavPanel()">
+  <svg viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+</button>
+<div id="nav-panel" class="collapsed">
+  <h3>🐯 myTigerTrail Navigation</h3>
+
+  <div class="nav-input-group">
+    <label>Ask for Directions</label>
+    <textarea id="nav-question" placeholder="How do I get from the library to the science building?" rows="3" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; color: #fff; font-size: 12px; outline: none; resize: vertical; min-height: 60px;"></textarea>
+  </div>
+
+  <button class="nav-btn" onclick="getAgentDirections()" style="margin-top:12px">🤖 Get AI Directions</button>
+  <button class="nav-btn secondary" onclick="clearRoute()">Clear</button>
+
+  <div id="nav-status" class="nav-status hidden"></div>
+
+  <div id="route-info" class="route-info hidden">
+    <div class="distance" id="route-distance">AI Directions</div>
+    <div class="eta" id="route-eta">Powered by myTigerTrail</div>
+    <div class="route-steps" id="route-steps"></div>
+  </div>
+</div>
+
+<div id="mode-indicator">
+  <h4 id="mode-title">Navigation Mode</h4>
+  <p id="mode-desc">Click a building or the ground to set your start point</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  UNIVERSITY OF THE PACIFIC — 3D CAMPUS MAP (Fixed & Polished)
+// ═══════════════════════════════════════════════════════════════
+
+// ── Zone definitions ──
+const ZONE = {
+  central:     { color: 0xc8a96e, label: 'Central Campus',        bg: 'rgba(200,169,110,.25)', text: '#c8a96e' },
+  residential: { color: 0xb05a3a, label: 'Residential / Greek',   bg: 'rgba(176,90,58,.25)',   text: '#cc7755' },
+  south:       { color: 0x5577bb, label: 'South Campus',          bg: 'rgba(85,119,187,.25)',  text: '#7799dd' },
+  athletic:    { color: 0xe88430, label: 'Athletic Campus',       bg: 'rgba(232,132,48,.25)',  text: '#e88430' },
+  field:       { color: 0x5a8f5a, label: 'Athletic Fields',       bg: 'rgba(90,143,90,.25)',   text: '#7ab87a' },
+  north:       { color: 0x8b6aad, label: 'North Campus / Health', bg: 'rgba(139,106,173,.25)', text: '#aa88cc' },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  PROCEDURAL TEXTURES (cached)
+// ═══════════════════════════════════════════════════════════════
+
+function makeWindowTexture(baseHex) {
+  const sz=256, cv=document.createElement('canvas');
+  cv.width=sz; cv.height=sz;
+  const ctx=cv.getContext('2d');
+  const r=(baseHex>>16)&0xff, g=(baseHex>>8)&0xff, b=baseHex&0xff;
+  ctx.fillStyle=`rgb(${Math.min(r+15,255)},${Math.min(g+10,255)},${Math.min(b+8,255)})`;
+  ctx.fillRect(0,0,sz,sz);
+  const bH=14, bW=28, m=2;
+  ctx.fillStyle=`rgb(${Math.max(r-20,0)},${Math.max(g-15,0)},${Math.max(b-10,0)})`;
+  for(let row=0;row<sz/bH;row++){
+    const off=(row%2===0)?0:bW/2;
+    for(let col=-1;col<sz/bW+1;col++) ctx.fillRect(col*bW+off+m,row*bH+m,bW-m*2,bH-m*2);
+  }
+  ctx.fillStyle='rgba(0,0,0,0.1)';
+  for(let row=0;row<sz/bH;row++) ctx.fillRect(0,row*bH,sz,m);
+  const cols=5, rows=7;
+  const wW=sz/cols*0.45, wH=sz/rows*0.5, oX=sz/cols*0.275, oY=sz/rows*0.25;
+  for(let wr=0;wr<rows;wr++){
+    for(let wc=0;wc<cols;wc++){
+      const wx=wc*(sz/cols)+oX, wy=wr*(sz/rows)+oY;
+      ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(wx-1,wy-1,wW+2,wH+2);
+      const lit=Math.random()>0.4;
+      if(lit){const gd=ctx.createLinearGradient(wx,wy,wx+wW,wy+wH);gd.addColorStop(0,'rgba(255,230,160,0.85)');gd.addColorStop(1,'rgba(200,180,100,0.6)');ctx.fillStyle=gd;}
+      else ctx.fillStyle='rgba(30,40,60,0.8)';
+      ctx.fillRect(wx,wy,wW,wH);
+      ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.moveTo(wx+wW/2,wy); ctx.lineTo(wx+wW/2,wy+wH);
+      ctx.moveTo(wx,wy+wH/2); ctx.lineTo(wx+wW,wy+wH/2); ctx.stroke();
+    }
+  }
+  const vg=ctx.createLinearGradient(0,0,0,sz);
+  vg.addColorStop(0,'rgba(0,0,0,0.18)'); vg.addColorStop(0.5,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.22)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,sz,sz);
+  const tex=new THREE.CanvasTexture(cv);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping; return tex;
+}
+
+function makeRoofTexture(baseHex){
+  const sz=128, cv=document.createElement('canvas');
+  cv.width=sz; cv.height=sz; const ctx=cv.getContext('2d');
+  const r=(baseHex>>16)&0xff, g=(baseHex>>8)&0xff, b=baseHex&0xff;
+  ctx.fillStyle=`rgb(${Math.max(r-35,0)},${Math.max(g-30,0)},${Math.max(b-25,0)})`;
+  ctx.fillRect(0,0,sz,sz);
+  ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=1.5;
+  for(let i=0;i<sz;i+=16){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,sz);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(sz,i);ctx.stroke();}
+  const tex=new THREE.CanvasTexture(cv); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(2,2); return tex;
+}
+
+function makeGroundTexture(){
+  const sz=512, cv=document.createElement('canvas');
+  cv.width=sz; cv.height=sz; const ctx=cv.getContext('2d');
+  ctx.fillStyle='#191b26'; ctx.fillRect(0,0,sz,sz);
+  for(let i=0;i<4000;i++){const x=Math.random()*sz,y=Math.random()*sz,v=Math.floor(Math.random()*12);ctx.fillStyle=`rgba(${v},${v},${v+5},0.35)`;ctx.fillRect(x,y,2,2);}
+  ctx.strokeStyle='rgba(80,85,130,0.1)'; ctx.lineWidth=0.5;
+  for(let i=0;i<sz;i+=32){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,sz);ctx.stroke();ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(sz,i);ctx.stroke();}
+  const tex=new THREE.CanvasTexture(cv); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(6,6); return tex;
+}
+
+function makePathTexture(){
+  const sz=128, cv=document.createElement('canvas');
+  cv.width=sz; cv.height=sz; const ctx=cv.getContext('2d');
+  ctx.fillStyle='#3a3d52'; ctx.fillRect(0,0,sz,sz);
+  for(let i=0;i<800;i++){const x=Math.random()*sz,y=Math.random()*sz;ctx.fillStyle=`rgba(${180+Math.random()*30|0},${180+Math.random()*30|0},${190+Math.random()*20|0},0.07)`;ctx.fillRect(x,y,1.5,1.5);}
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<sz;i+=32){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(sz,i);ctx.stroke();}
+  const tex=new THREE.CanvasTexture(cv); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; return tex;
+}
+
+// FIX #16: Cache field texture — create once, reuse
+let _cachedFieldTex = null;
+function makeFieldTexture(){
+  if (_cachedFieldTex) return _cachedFieldTex;
+  const sz=256, cv=document.createElement('canvas');
+  cv.width=sz; cv.height=sz; const ctx=cv.getContext('2d');
+  for(let i=0;i<sz;i+=16){ctx.fillStyle=i%32===0?'#3d6e35':'#4a7a3f';ctx.fillRect(0,i,sz,16);}
+  ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=1.5;
+  for(let i=0;i<sz;i+=64){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(sz,i);ctx.stroke();}
+  _cachedFieldTex = new THREE.CanvasTexture(cv);
+  _cachedFieldTex.wrapS = _cachedFieldTex.wrapT = THREE.RepeatWrapping;
+  _cachedFieldTex.repeat.set(2,2);
+  return _cachedFieldTex;
+}
+
+// Texture caches
+const _wc={}, _rc={};
+function wTex(c){ if(!_wc[c]) _wc[c]=makeWindowTexture(c); return _wc[c]; }
+function rTex(c){ if(!_rc[c]) _rc[c]=makeRoofTexture(c); return _rc[c]; }
+
+// ═══════════════════════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════════════════════
+
+let scene, camera, renderer, controls, raycaster, mouse;
+let buildingMeshes = [], hoveredMesh = null, selectedMesh = null, allBuildingData = [];
+let groundMesh = null;  // FIX #5: explicit reference to ground
+
+// Navigation state
+let navClickMode = 'start';  // 'start' or 'end'
+let startPoint = null, endPoint = null;
+let routeLine = null, startMarker = null, endMarker = null;
+let ringAnimId = null;  // FIX #9: track animation frame ID
+let pathGraph = null;
+let navPanelOpen = false;
+
+const tooltip = document.getElementById('tooltip');
+const tooltipName = tooltip.querySelector('.name');
+const tooltipNum = tooltip.querySelector('.num');
+const tooltipZone = tooltip.querySelector('.zone');
+
+// ═══════════════════════════════════════════════════════════════
+//  BUILDING CREATION
+// ═══════════════════════════════════════════════════════════════
+
+function mats(color) {
+  const wall = new THREE.MeshStandardMaterial({ map: wTex(color), color: new THREE.Color(color).multiplyScalar(0.9), roughness: 0.7, metalness: 0.05 });
+  const roof = new THREE.MeshStandardMaterial({ map: rTex(color), color: new THREE.Color(color).multiplyScalar(0.6), roughness: 0.85 });
+  return [wall, wall, roof, roof, wall, wall];
+}
+
+// FIX #7: setEmissive that handles groups, arrays, and single materials
+function setEmissive(target, hex) {
+  if (!target) return;
+  // If it's a group, recurse into all children
+  if (target.isGroup) {
+    target.children.forEach(child => setEmissive(child, hex));
+    return;
+  }
+  if (Array.isArray(target.material)) {
+    target.material.forEach(m => { if (m.emissive) m.emissive.setHex(hex); });
+  } else if (target.material && target.material.emissive) {
+    target.material.emissive.setHex(hex);
+  }
+}
+
+function createBox({ x, z, w, d, h, color, name, num, zone }) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, mats(color));
+  mesh.position.set(x, h / 2, z);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.userData = { name, num, zone, baseColor: color, isBuilding: true, buildingIndex: allBuildingData.length };
+  scene.add(mesh);
+  buildingMeshes.push(mesh);
+  allBuildingData.push({ name, num, zone, mesh, x, z, w, d, h });
+  return mesh;
+}
+
+function createComposite({ x, z, blocks, color, name, num, zone }) {
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+  let totalW = 0, totalD = 0;
+  const idx = allBuildingData.length;
+  blocks.forEach(b => {
+    const geo = new THREE.BoxGeometry(b.w, b.h, b.d);
+    const mesh = new THREE.Mesh(geo, mats(color));
+    mesh.position.set(b.dx || 0, b.h / 2, b.dz || 0);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.userData = { name, num, zone, baseColor: color, isBuilding: true, buildingIndex: idx };
+    group.add(mesh);
+    buildingMeshes.push(mesh);
+    totalW = Math.max(totalW, Math.abs(b.dx || 0) + b.w / 2);
+    totalD = Math.max(totalD, Math.abs(b.dz || 0) + b.d / 2);
+  });
+  group.userData = { name, num, zone, baseColor: color, isBuilding: true, buildingIndex: idx };
+  scene.add(group);
+  allBuildingData.push({ name, num, zone, mesh: group, x, z, w: totalW * 2, d: totalD * 2 });
+  return group;
+}
+
+function createExtruded({ points, height, color, name, num, zone, pos }) {
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshStandardMaterial({ map: wTex(color), color: new THREE.Color(color).multiplyScalar(0.88), roughness: 0.7, metalness: 0.05 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(pos.x, 0, pos.z);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.userData = { name, num, zone, baseColor: color, isBuilding: true, buildingIndex: allBuildingData.length };
+  scene.add(mesh); buildingMeshes.push(mesh);
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  points.forEach(p => { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minZ = Math.min(minZ, p[1]); maxZ = Math.max(maxZ, p[1]); });
+  allBuildingData.push({ name, num, zone, mesh, x: pos.x, z: pos.z, w: maxX - minX, d: maxZ - minZ });
+  return mesh;
+}
+
+function createField({ x, z, w, d, name, num }) {
+  const geo = new THREE.BoxGeometry(w, 0.18, d);
+  const mat = new THREE.MeshStandardMaterial({ map: makeFieldTexture(), roughness: 0.9 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, 0.09, z); mesh.receiveShadow = true;
+  mesh.userData = { name, num, zone: 'field', baseColor: ZONE.field.color, isBuilding: true, buildingIndex: allBuildingData.length };
+  scene.add(mesh); buildingMeshes.push(mesh);
+  allBuildingData.push({ name, num, zone: 'field', mesh, x, z, w, d });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ALL CAMPUS BUILDINGS
+// ═══════════════════════════════════════════════════════════════
+
+function createAllBuildings() {
+  const C = ZONE.central.color, R = ZONE.residential.color;
+  const S = ZONE.south.color, A = ZONE.athletic.color, N = ZONE.north.color;
+
+  // ═══ CENTRAL CAMPUS ═══
+  createBox({ x:28, z:7, w:2.5, d:2.5, h:14, color:C, name:'Robert E. Burns Tower', num:'10', zone:'central' });
+  createBox({ x:24, z:7, w:4, d:3, h:4, color:C, name:'Buck Memorial Hall', num:'12', zone:'central' });
+  createBox({ x:28, z:12, w:5, d:4, h:5, color:C, name:'Conservatory of Music, Faye Spanos Concert Hall', num:'14', zone:'central' });
+  createBox({ x:24, z:12, w:3, d:2.5, h:3.5, color:C, name:'Rehearsal Hall', num:'15', zone:'central' });
+  createBox({ x:22, z:10, w:3, d:2.5, h:3.5, color:C, name:'Recital Hall', num:'16', zone:'central' });
+  createComposite({ x:18, z:10, blocks:[{ dx:0, dz:0, w:7, d:5, h:4.5 }, { dx:-2, dz:-3, w:3, d:2, h:4.5 }], color:C, name:'William Knox Holt Memorial Library', num:'18', zone:'central' });
+  createBox({ x:12, z:3, w:3.5, d:3, h:4, color:C, name:'Anderson Hall', num:'27', zone:'central' });
+  createBox({ x:9, z:5, w:3, d:3, h:3.5, color:C, name:'Baun Hall', num:'28', zone:'central' });
+  createBox({ x:6, z:3, w:2.5, d:2, h:3, color:C, name:'Hydraulics Laboratory', num:'29', zone:'central' });
+  createBox({ x:4, z:3, w:3, d:2.5, h:3.5, color:C, name:'Finance Center, West Memorial Hall', num:'30', zone:'central' });
+  createBox({ x:4, z:6, w:3, d:2.5, h:3, color:C, name:'Southwest Hall', num:'31', zone:'central' });
+  createBox({ x:7, z:6.5, w:3, d:2.5, h:3.5, color:C, name:'Khoury Hall', num:'32', zone:'central' });
+  createBox({ x:10, z:7, w:2.5, d:2, h:3, color:C, name:'Human Resources', num:'33', zone:'central' });
+  createComposite({ x:10, z:10, blocks:[{ dx:0, dz:0, w:5, d:4, h:4.5 }, { dx:2, dz:2, w:3, d:2, h:4.5 }], color:C, name:'John T. Chambers Technology Center', num:'34', zone:'central' });
+  // FIX #3: Single entry for Weber Hall
+  createBox({ x:19, z:-2, w:6, d:4, h:4, color:C, name:'Eberhardt School of Business, Weber Hall', num:'23', zone:'central' });
+  createExtruded({ points:[[0,0],[3.5,0],[3.5,5],[1.75,6.5],[0,5]], height:5, color:C, name:'Morris Chapel, Colliver Hall, Sears Hall', num:'40', zone:'central', pos:{ x:22, z:-4 }});
+  createBox({ x:15, z:3, w:4, d:4, h:4, color:C, name:'Knoles Hall', num:'24', zone:'central' });
+
+  // Knoles Lawn (decorative)
+  const lawnGeo = new THREE.BoxGeometry(4, 0.08, 4);
+  const lawnMat = new THREE.MeshStandardMaterial({ color: 0x3a6830, roughness: 0.95 });
+  const lawn = new THREE.Mesh(lawnGeo, lawnMat); lawn.position.set(20, 0.04, 7); lawn.receiveShadow = true; scene.add(lawn);
+
+  createComposite({ x:8, z:0, blocks:[{ dx:0, dz:0, w:6, d:4, h:3.5 }, { dx:3, dz:-2, w:3, d:3, h:3.5 }], color:C, name:'Don and Karen DeRosa University Center', num:'60', zone:'central' });
+  createBox({ x:24, z:18, w:5, d:3.5, h:3, color:R, name:'Tower View Apartments', num:'35', zone:'residential' });
+  createBox({ x:34, z:-6, w:3, d:2.5, h:3, color:C, name:'Pacific House', num:'1', zone:'central' });
+  createBox({ x:34, z:2, w:2.5, d:2, h:3, color:R, name:'Phi Delta Chi, ΦΔΧ', num:'2', zone:'residential' });
+  createBox({ x:34, z:5, w:2.5, d:2, h:2.5, color:C, name:'Military and Veterans Student Center', num:'3', zone:'central' });
+  createBox({ x:34, z:8, w:3, d:2.5, h:3, color:R, name:'McConchie Hall', num:'7', zone:'residential' });
+  createBox({ x:34, z:14, w:2.5, d:2, h:3, color:R, name:'Kappa Psi, ΚΨ', num:'8', zone:'residential' });
+
+  // ═══ RESIDENTIAL / GREEK ═══
+  createComposite({ x:20, z:-4, blocks:[{ dx:0, dz:0, w:6, d:4, h:5 }, { dx:3.5, dz:-1, w:3, d:3, h:5 }], color:R, name:'Grace Covell Hall', num:'41', zone:'residential' });
+  createBox({ x:18, z:-6, w:3, d:3, h:3.5, color:C, name:'Hand Hall', num:'42', zone:'central' });
+  createBox({ x:25, z:-14, w:3, d:2.5, h:3.5, color:R, name:'Delta Delta Delta, ΔΔΔ', num:'44', zone:'residential' });
+  createBox({ x:19, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Kappa Alpha Theta, ΚΑΘ', num:'45', zone:'residential' });
+  createBox({ x:16, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Delta Gamma, ΔΓ', num:'46', zone:'residential' });
+  createBox({ x:13, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Sigma Chi, ΣΧ', num:'47', zone:'residential' });
+  createBox({ x:10, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Beta Theta Pi, ΒΘΠ', num:'48', zone:'residential' });
+  createBox({ x:7, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Alpha Phi, ΑΦ', num:'49', zone:'residential' });
+
+  // ═══ FITNESS / QUAD AREA ═══
+  createBox({ x:2, z:-4, w:4, d:3, h:3.5, color:C, name:'Baun Fitness Center', num:'61', zone:'central' });
+  createBox({ x:0, z:-2, w:3, d:3, h:3.5, color:C, name:'Bannister Hall', num:'62', zone:'central' });
+  createBox({ x:0, z:-5, w:3, d:2.5, h:3.5, color:C, name:'Owen Hall', num:'63', zone:'central' });
+  createBox({ x:2, z:2, w:5, d:5, h:5, color:C, name:'Main Gymnasium', num:'64', zone:'central' });
+  createComposite({ x:-4, z:2, blocks:[{ dx:0, dz:0, w:5, d:3.5, h:4 }, { dx:0, dz:-2.5, w:3, d:2, h:4 }], color:C, name:'College of the Pacific, Wendell Phillips Center', num:'68', zone:'central' });
+  createBox({ x:-6, z:-1, w:3, d:2.5, h:3.5, color:C, name:'John Ballantyne Hall', num:'70', zone:'central' });
+  createBox({ x:-6, z:1.5, w:3, d:2.5, h:3.5, color:C, name:'George Wilson Hall (School of International Studies)', num:'71', zone:'central' });
+  createBox({ x:-8, z:-1, w:2.5, d:2.5, h:3, color:C, name:'Jessie Ballantyne Hall', num:'72', zone:'central' });
+  createBox({ x:-5, z:5, w:3, d:2.5, h:3, color:C, name:'Bechtel International Center', num:'73', zone:'central' });
+  createBox({ x:-4, z:8, w:2.5, d:2, h:3, color:C, name:'Casa Jackson', num:'74', zone:'central' });
+  createBox({ x:-7, z:8, w:2.5, d:2, h:3, color:C, name:'Casa Werner', num:'75', zone:'central' });
+  createBox({ x:-10, z:-3, w:2.5, d:2, h:3, color:C, name:'Carter House', num:'76', zone:'central' });
+  createBox({ x:-8, z:4, w:3, d:2.5, h:3.5, color:C, name:'Callison Hall', num:'77', zone:'central' });
+  // FIX #2: Elbert Covell Hall is #78
+  createComposite({ x:-8, z:8, blocks:[{ dx:0, dz:0, w:5, d:3.5, h:4 }, { dx:2.5, dz:2, w:2.5, d:2, h:4 }], color:R, name:'Elbert Covell Hall / Raymond Great Hall', num:'78', zone:'residential' });
+  createBox({ x:-14, z:10, w:2.5, d:2, h:3, color:C, name:'Pacific Technology Customer Support Center', num:'79', zone:'central' });
+  createBox({ x:-14, z:8, w:2.5, d:2, h:2.5, color:R, name:'Raymond Lodge', num:'80', zone:'residential' });
+  createBox({ x:-10, z:-5, w:2, d:2, h:2.5, color:C, name:'Eiselen House', num:'81', zone:'central' });
+  createBox({ x:-12, z:8, w:2, d:2, h:2.5, color:R, name:'Ritter House', num:'82', zone:'residential' });
+  createBox({ x:-12, z:6, w:2, d:2, h:2.5, color:R, name:'Wemyss Hall', num:'83', zone:'residential' });
+  createBox({ x:-12, z:12, w:2, d:2, h:2.5, color:R, name:'Farley House', num:'84', zone:'residential' });
+  createBox({ x:-14, z:12, w:2, d:2, h:2.5, color:R, name:'Price House', num:'85', zone:'residential' });
+
+  // ═══ SOUTH CAMPUS ═══
+  createBox({ x:3, z:17, w:4, d:3, h:4, color:S, name:'Benerd College', num:'101', zone:'south' });
+  createBox({ x:7, z:22, w:5, d:3.5, h:4, color:S, name:'Biological Sciences Center', num:'103', zone:'south' });
+  createBox({ x:3, z:35, w:4, d:3, h:3.5, color:S, name:'Classroom Building', num:'107', zone:'south' });
+  createBox({ x:-1, z:35, w:3.5, d:3, h:3.5, color:S, name:'Olson Hall', num:'109', zone:'south' });
+  createBox({ x:3, z:28, w:4, d:3, h:3.5, color:S, name:'Biological Laboratories', num:'110', zone:'south' });
+  createBox({ x:0, z:25, w:3, d:2.5, h:3, color:S, name:'DeMarcus Brown Studio Theatre Arts', num:'111', zone:'south' });
+  createBox({ x:0, z:18, w:3, d:2.5, h:3, color:S, name:'Alex and Jeri Vereschagin Alumni House', num:'112', zone:'south' });
+  createComposite({ x:-5, z:20, blocks:[{ dx:0, dz:0, w:5, d:4, h:4.5 }, { dx:-2, dz:2, w:3, d:2.5, h:4.5 }], color:S, name:'Long Theatre (Box Office)', num:'115', zone:'south' });
+  createBox({ x:-8, z:25, w:3.5, d:3, h:3.5, color:S, name:'Communication Department (Psychology)', num:'116', zone:'south' });
+
+  // Gardens (decorative but navigable)
+  const gardenGeo = new THREE.BoxGeometry(3, 0.1, 2.5);
+  const gardenMat = new THREE.MeshStandardMaterial({ color: 0x3a7030, roughness: 0.95 });
+  const garden = new THREE.Mesh(gardenGeo, gardenMat); garden.position.set(-11, 0.05, 27); garden.receiveShadow = true; scene.add(garden);
+  allBuildingData.push({ name:'Robb Garden', num:'117', zone:'south', mesh:garden, x:-11, z:27, w:3, d:2.5 });
+
+  createBox({ x:-12, z:25, w:4, d:3, h:3.5, color:S, name:'Engineering & Computer Science South Campus Labs', num:'118', zone:'south' });
+
+  const ngGeo = new THREE.BoxGeometry(2.5, 0.1, 2);
+  const ngMat = new THREE.MeshStandardMaterial({ color: 0x4a8040, roughness: 0.95 });
+  const ng = new THREE.Mesh(ngGeo, ngMat); ng.position.set(-9, 0.05, 30); ng.receiveShadow = true; scene.add(ng);
+  allBuildingData.push({ name:'Bon Appétit Company Native Garden', num:'119', zone:'south', mesh:ng, x:-9, z:30, w:2.5, d:2 });
+
+  createBox({ x:-10, z:35, w:4, d:3, h:3.5, color:S, name:'Pacific Geosciences Center, Reynolds Art Gallery', num:'120', zone:'south' });
+  createBox({ x:-14, z:35, w:3.5, d:3, h:3, color:S, name:'Jeannette Powell Art Center', num:'122', zone:'south' });
+  createBox({ x:-18, z:35, w:2.5, d:2.5, h:2.5, color:S, name:'Ceramics Studio', num:'124', zone:'south' });
+
+  // ═══ ATHLETIC CAMPUS ═══
+  createBox({ x:-10, z:20, w:5, d:4, h:5, color:A, name:'Janssen-Lagorio Gymnasium and Performance Center', num:'130', zone:'athletic' });
+  createBox({ x:-12, z:22, w:4, d:3, h:4, color:A, name:'Dance Studio, South Campus Gym', num:'132', zone:'athletic' });
+  createBox({ x:-16, z:25, w:5, d:3.5, h:4, color:A, name:'Pacific Intercollegiate Athletics Center', num:'134', zone:'athletic' });
+  createExtruded({ points:[[-5,-4],[5,-4],[6,-2],[6,4],[5,6],[-5,6],[-6,4],[-6,-2]], height:7, color:A, name:'Alex G. Spanos Center', num:'135', zone:'athletic', pos:{ x:-16, z:16 }});
+  createBox({ x:-18, z:14, w:4, d:3, h:1.5, color:0x3366aa, name:'Chris Kjeldsen Pool', num:'146', zone:'athletic' });
+  createBox({ x:-22, z:14, w:3, d:3, h:2, color:A, name:'Pacific Aquatics Center', num:'145', zone:'athletic' });
+  createField({ x:-36, z:22, w:6, d:4, name:'Raney Sand Volleyball Courts', num:'142' });
+  createBox({ x:-36, z:18, w:3.5, d:2.5, h:2.5, color:A, name:'Roy and Jean Sanders Tennis Clubhouse', num:'153', zone:'athletic' });
+  createBox({ x:-28, z:8, w:4, d:3, h:1, color:A, name:'Eve Zimmerman Tennis Center', num:'152', zone:'athletic' });
+
+  // ═══ ATHLETIC FIELDS ═══
+  createField({ x:-18, z:5, w:12, d:8, name:'Knoles Field', num:'150' });
+  createField({ x:-24, z:5, w:8, d:6, name:'Bill Simoni Field', num:'148' });
+  createField({ x:-30, z:0, w:8, d:6, name:'Zuckerman Field', num:'155' });
+  createField({ x:-30, z:-5, w:6, d:5, name:'Field Hockey Turf', num:'157' });
+  createField({ x:-30, z:10, w:8, d:6, name:'Klein Family Field', num:'140' });
+  createField({ x:-2, z:-38, w:10, d:7, name:'Alan and Olive Gardemeyer Field', num:'175' });
+  createField({ x:-20, z:-22, w:10, d:7, name:'Brookside Field', num:'163' });
+  createBox({ x:-36, z:35, w:4, d:3, h:3, color:A, name:'Covered Performance Center', num:'141', zone:'athletic' });
+
+  // ═══ NORTH CAMPUS / HEALTH ═══
+  createBox({ x:-15, z:-30, w:4, d:3.5, h:3.5, color:N, name:'Public Safety, Cowell Wellness Center', num:'170', zone:'north' });
+  createBox({ x:-4, z:-28, w:5, d:4, h:4, color:N, name:'Monagan Hall', num:'171', zone:'north' });
+  createBox({ x:5, z:-28, w:5, d:4, h:4, color:N, name:'Chan Family Hall', num:'172', zone:'north' });
+  createBox({ x:14, z:-30, w:6, d:4, h:4.5, color:N, name:'Health Sciences Learning Center', num:'178', zone:'north' });
+  createComposite({ x:20, z:-30, blocks:[{ dx:0, dz:0, w:7, d:5, h:4.5 }, { dx:3, dz:-2, w:3, d:2.5, h:4.5 }], color:N, name:'Long Memorial Hall, School of Pharmacy', num:'179', zone:'north' });
+  const rotPts = [];
+  for (let i = 0; i < 8; i++) { const a = (Math.PI * 2 * i) / 8; rotPts.push([Math.cos(a) * 2.5, Math.sin(a) * 2.5]); }
+  createExtruded({ points:rotPts, height:4, color:N, name:'Rotunda', num:'180', zone:'north', pos:{ x:25, z:-28 }});
+  createBox({ x:-18, z:-15, w:4, d:3, h:3.5, color:N, name:'Calaveras Hall', num:'166', zone:'north' });
+  createBox({ x:-22, z:-15, w:3, d:2.5, h:3, color:R, name:'Theta Chi, ΘΧ', num:'165', zone:'residential' });
+  createBox({ x:-12, z:-18, w:4, d:3, h:3, color:N, name:'Support Services, Physical Plant', num:'168', zone:'north' });
+  createComposite({ x:-32, z:-18, blocks:[{ dx:0, dz:0, w:3, d:8, h:3 }, { dx:4, dz:0, w:3, d:8, h:3 }], color:R, name:'University Townhouses', num:'160', zone:'residential' });
+
+  // ═══ TREES ═══
+  [
+    [15,-7],[3,-15],[-2,-12],[10,15],[20,15],[-3,-20],[8,-20],[-5,15],
+    [12,-15],[-15,-8],[0,-35],[10,-35],[-8,-35],[25,-20],[-25,-10],
+    [-18,-35],[30,-15],[15,25],[-5,30],[8,32],[-20,0],[-25,-20],
+    [-15,15],[28,-25],[5,-42],[-8,-42],[16,-42],[30,20],[-30,-15],[0,10],
+    [18,0],[14,8],[-3,8],[22,20],[-28,20],[35,-10],[-5,-8],[32,0],
+    [5,10],[14,-4],[20,-12],[26,-18],[-2,5],[16,2],
+  ].forEach(([tx,tz]) => {
+    const sc = 0.55 + Math.random() * 0.55;
+    const tH = 1 * sc, lH = 2.2 * sc, lR = 1.0 * sc;
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12*sc, 0.2*sc, tH, 6),
+      new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.95 })
+    );
+    trunk.position.set(tx, tH/2, tz); trunk.castShadow = true; scene.add(trunk);
+    const leafCol = 0x2a6040 + Math.floor(Math.random() * 0x152010);
+    const leafMat = new THREE.MeshStandardMaterial({ color: leafCol, roughness: 0.85 });
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(lR, lH, 7), leafMat);
+    leaf.position.set(tx, tH + lH/2, tz); leaf.castShadow = true; scene.add(leaf);
+    const leaf2 = new THREE.Mesh(new THREE.ConeGeometry(lR*0.65, lH*0.6, 7), leafMat);
+    leaf2.position.set(tx, tH + lH*0.85, tz); scene.add(leaf2);
+  });
+
+  // ═══ CALAVERAS RIVER ═══
+  const riverPts = [[-40,-12],[-30,-13],[-20,-12],[-10,-13],[0,-15],[10,-17],[20,-18],[30,-17],[38,-18]];
+  const rs = new THREE.Shape();
+  rs.moveTo(riverPts[0][0], riverPts[0][1]);
+  for (let i = 1; i < riverPts.length; i++) rs.quadraticCurveTo(riverPts[i-1][0]+3, riverPts[i-1][1]-1, riverPts[i][0], riverPts[i][1]);
+  for (let i = riverPts.length-1; i >= 0; i--) rs.lineTo(riverPts[i][0], riverPts[i][1]+2.8);
+  const rGeo = new THREE.ShapeGeometry(rs); rGeo.rotateX(-Math.PI/2);
+  const rMat = new THREE.MeshStandardMaterial({ color:0x2a5875, roughness:0.25, metalness:0.15, transparent:true, opacity:0.75 });
+  const river = new THREE.Mesh(rGeo, rMat); river.position.y = 0.05; scene.add(river);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PATHS & NAVIGATION GRAPH
+// ═══════════════════════════════════════════════════════════════
+
+const pathDefinitions = [
+  { x:5,   z:-5,  w:1.4, d:58,  label:'Atchley Way (N-S spine)' },
+  { x:5,   z:14,  w:36,  d:1.4, label:'Dave Brubeck Way' },
+  { x:-3,  z:5,   w:1.2, d:34,  label:'Stagg Way' },
+  { x:18,  z:6,   w:22,  d:1.2, label:'Burcham Walkway' },
+  { x:18,  z:-5,  w:18,  d:1.0, label:'Chapel Lane' },
+  { x:5,   z:-25, w:60,  d:1.2, label:'Brookside Road (E-W)' },
+  { x:-14, z:-8,  w:1.2, d:22,  label:'West Campus Road' },
+  { x:8,   z:20,  w:1.2, d:18,  label:'Kensington Way' },
+  { x:-10, z:5,   w:1.0, d:18,  label:'Rudkin Way' },
+  { x:-22, z:16,  w:1.0, d:20,  label:'Larry Heller Drive' },
+  { x:30,  z:7,   w:14,  d:1.0, label:'Knoles Way' },
+  { x:20,  z:-18, w:1.2, d:22,  label:'North Campus Drive' },
+  { x:-4,  z:-18, w:34,  d:1.0, label:'Health Sciences Loop' },
+  { x:12,  z:0,   w:16,  d:0.8, label:'Quad East Walk' },
+  { x:-2,  z:-12, w:20,  d:0.8, label:'Presidents Way (Greek Row)' },
+  { x:0,   z:22,  w:22,  d:0.8, label:'South Campus Walk' },
+  { x:-8,  z:-30, w:44,  d:0.9, label:'North Health Connector' },
+  { x:8,   z:-2,  w:0.8, d:12,  label:'Library Walk' },
+  { x:22,  z:-14, w:12,  d:0.8, label:'Residential Row Path' },
+  { x:-16, z:0,   w:0.8, d:22,  label:'Athletic Loop West' },
+  { x:5,   z:7,   w:20,  d:0.8, label:'Burcham–Atchley Cross' },
+  { x:-5,  z:30,  w:22,  d:0.8, label:'South Arts Walk' },
+  { x:14,  z:-8,  w:0.8, d:10,  label:'McCaffrey Connector' },
+];
+
+function createPaths() {
+  const pTex = makePathTexture();
+  pathDefinitions.forEach(p => {
+    const geo = new THREE.BoxGeometry(p.w, 0.06, p.d);
+    const mat = new THREE.MeshStandardMaterial({ map: pTex.clone(), color: 0x555775, roughness: 0.9 });
+    mat.map.repeat.set(p.w > p.d ? p.w/6 : 1, p.d > p.w ? p.d/6 : 1);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(p.x, 0.04, p.z); mesh.receiveShadow = true; scene.add(mesh);
+  });
+}
+
+// FIX #4 & #10: Build nav graph AFTER buildings exist, with proper connectivity
+function buildNavigationGraph() {
+  pathGraph = { nodes: [], edges: [] };
+  const nodeMap = new Map();
+
+  // For each path, generate multiple sample nodes along its length (not just center)
+  // This dramatically improves connectivity for long paths
+  pathDefinitions.forEach((p, idx) => {
+    const isHorizontal = p.w > p.d;
+    const length = isHorizontal ? p.w : p.d;
+    const steps = Math.max(2, Math.ceil(length / 8)); // sample every ~8 units
+
+    for (let s = 0; s < steps; s++) {
+      const t = steps === 1 ? 0.5 : s / (steps - 1);
+      let nx, nz;
+      if (isHorizontal) {
+        nx = p.x - p.w/2 + p.w * t;
+        nz = p.z;
+      } else {
+        nx = p.x;
+        nz = p.z - p.d/2 + p.d * t;
+      }
+      const nodeId = `path_${idx}_${s}`;
+      const node = { id: nodeId, x: nx, z: nz, type: 'path', pathIdx: idx, label: p.label };
+      pathGraph.nodes.push(node);
+      nodeMap.set(nodeId, node);
+    }
+  });
+
+  // Connect nodes within the same path
+  pathDefinitions.forEach((p, idx) => {
+    const pathNodes = pathGraph.nodes.filter(n => n.pathIdx === idx);
+    for (let i = 0; i < pathNodes.length - 1; i++) {
+      const d = Math.hypot(pathNodes[i].x - pathNodes[i+1].x, pathNodes[i].z - pathNodes[i+1].z);
+      pathGraph.edges.push({ from: pathNodes[i].id, to: pathNodes[i+1].id, weight: d });
+      pathGraph.edges.push({ from: pathNodes[i+1].id, to: pathNodes[i].id, weight: d });
+    }
+  });
+
+  // Connect nodes from DIFFERENT paths that are close to each other (intersections)
+  const pathNodes = pathGraph.nodes.filter(n => n.type === 'path');
+  for (let i = 0; i < pathNodes.length; i++) {
+    for (let j = i + 1; j < pathNodes.length; j++) {
+      if (pathNodes[i].pathIdx === pathNodes[j].pathIdx) continue;
+      const dist = Math.hypot(pathNodes[i].x - pathNodes[j].x, pathNodes[i].z - pathNodes[j].z);
+      if (dist < 10) {
+        pathGraph.edges.push({ from: pathNodes[i].id, to: pathNodes[j].id, weight: dist });
+        pathGraph.edges.push({ from: pathNodes[j].id, to: pathNodes[i].id, weight: dist });
+      }
+    }
+  }
+
+  // Connect buildings to nearest path nodes (now buildings exist!)
+  allBuildingData.forEach((b, idx) => {
+    const nodeId = `bld_${idx}`;
+    const node = { id: nodeId, x: b.x, z: b.z, type: 'building', name: b.name, num: b.num };
+    pathGraph.nodes.push(node);
+    nodeMap.set(nodeId, node);
+
+    // Connect to the 2 nearest path nodes for redundancy
+    const sorted = pathNodes
+      .map(n => ({ n, dist: Math.hypot(b.x - n.x, b.z - n.z) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2);
+
+    sorted.forEach(({ n, dist }) => {
+      pathGraph.edges.push({ from: nodeId, to: n.id, weight: dist });
+      pathGraph.edges.push({ from: n.id, to: nodeId, weight: dist });
+    });
+  });
+}
+
+// A* Pathfinding
+function findPath(startX, startZ, endX, endZ) {
+  let startNode = null, endNode = null;
+  let minStart = Infinity, minEnd = Infinity;
+
+  pathGraph.nodes.forEach(n => {
+    const dStart = Math.hypot(n.x - startX, n.z - startZ);
+    const dEnd = Math.hypot(n.x - endX, n.z - endZ);
+    if (dStart < minStart) { minStart = dStart; startNode = n; }
+    if (dEnd < minEnd) { minEnd = dEnd; endNode = n; }
+  });
+
+  if (!startNode || !endNode || startNode.id === endNode.id) return null;
+
+  const openSet = [startNode];
+  const closedSet = new Set();
+  const cameFrom = new Map();
+  const gScore = new Map();
+  const fScore = new Map();
+
+  pathGraph.nodes.forEach(n => { gScore.set(n.id, Infinity); fScore.set(n.id, Infinity); });
+  gScore.set(startNode.id, 0);
+  fScore.set(startNode.id, Math.hypot(endNode.x - startNode.x, endNode.z - startNode.z));
+
+  while (openSet.length > 0) {
+    openSet.sort((a, b) => fScore.get(a.id) - fScore.get(b.id));
+    const current = openSet.shift();
+
+    if (current.id === endNode.id) {
+      const path = [];
+      let curr = current;
+      while (curr) {
+        path.unshift({ x: curr.x, z: curr.z, name: curr.name, label: curr.label });
+        curr = cameFrom.get(curr.id);
+      }
+      return path;
+    }
+
+    closedSet.add(current.id);
+
+    const neighbors = pathGraph.edges
+      .filter(e => e.from === current.id)
+      .map(e => ({ node: pathGraph.nodes.find(n => n.id === e.to), weight: e.weight }))
+      .filter(({ node }) => node && !closedSet.has(node.id));
+
+    for (const { node: neighbor, weight } of neighbors) {
+      const tentativeG = gScore.get(current.id) + weight;
+      if (!openSet.find(n => n.id === neighbor.id)) openSet.push(neighbor);
+      if (tentativeG < gScore.get(neighbor.id)) {
+        cameFrom.set(neighbor.id, current);
+        gScore.set(neighbor.id, tentativeG);
+        fScore.set(neighbor.id, tentativeG + Math.hypot(endNode.x - neighbor.x, endNode.z - neighbor.z));
+      }
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCENE SETUP
+// ═══════════════════════════════════════════════════════════════
+
+function initScene() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0b10);
+  scene.fog = new THREE.FogExp2(0x0a0b10, 0.0035);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 600);
+  camera.position.set(60, 50, 60);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  document.body.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0x9090bb, 0.5));
+  scene.add(new THREE.HemisphereLight(0xddeeff, 0x223344, 0.4));
+
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.05);
+  sun.position.set(40, 70, 25); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -95; sun.shadow.camera.right = 95;
+  sun.shadow.camera.top = 95; sun.shadow.camera.bottom = -95;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 200;
+  sun.shadow.bias = -0.001; scene.add(sun);
+
+  const fill = new THREE.DirectionalLight(0xaabbdd, 0.35);
+  fill.position.set(-30, 30, -20); scene.add(fill);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  // FIX #5: Store explicit ground reference
+  const gGeo = new THREE.PlaneGeometry(140, 130);
+  const gMat = new THREE.MeshStandardMaterial({ map: makeGroundTexture(), roughness: 0.95 });
+  groundMesh = new THREE.Mesh(gGeo, gMat);
+  groundMesh.rotation.x = -Math.PI / 2;
+  groundMesh.position.y = -0.01;
+  groundMesh.receiveShadow = true;
+  scene.add(groundMesh);
+
+  const grid = new THREE.GridHelper(140, 70, 0x202240, 0x181a30);
+  grid.position.y = 0.008; scene.add(grid);
+
+  initOrbitControls();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ORBIT CONTROLS
+// ═══════════════════════════════════════════════════════════════
+
+function initOrbitControls() {
+  const el = renderer.domElement;
+  let isDown = false, isRight = false, prevX = 0, prevY = 0;
+  let sph = { r: 88, theta: Math.PI / 4.5, phi: Math.PI / 5 };
+  let target = new THREE.Vector3(0, 0, 0);
+  const damp = 0.08;
+  let gTheta = sph.theta, gPhi = sph.phi, gR = sph.r;
+  let gTarget = target.clone();
+
+  function update() {
+    sph.theta += (gTheta - sph.theta) * damp;
+    sph.phi += (gPhi - sph.phi) * damp;
+    sph.r += (gR - sph.r) * damp;
+    target.lerp(gTarget, damp);
+    sph.phi = Math.max(0.05, Math.min(Math.PI / 2 - 0.02, sph.phi));
+    sph.r = Math.max(15, Math.min(200, sph.r));
+    camera.position.set(
+      target.x + sph.r * Math.sin(sph.phi) * Math.cos(sph.theta),
+      target.y + sph.r * Math.cos(sph.phi),
+      target.z + sph.r * Math.sin(sph.phi) * Math.sin(sph.theta)
+    );
+    camera.lookAt(target);
+  }
+
+  controls = {
+    update,
+    flyTo(x, z) { gTarget.set(x, 0, z); gR = 35; }
+  };
+
+  el.addEventListener('pointerdown', e => {
+    isDown = true; isRight = e.button === 2;
+    prevX = e.clientX; prevY = e.clientY;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!isDown) return;
+    const dx = e.clientX - prevX, dy = e.clientY - prevY;
+    prevX = e.clientX; prevY = e.clientY;
+    if (isRight) {
+      const r = new THREE.Vector3();
+      r.crossVectors(camera.getWorldDirection(new THREE.Vector3()), new THREE.Vector3(0,1,0)).normalize();
+      gTarget.addScaledVector(r, -dx * 0.06);
+      gTarget.y += dy * 0.06;
+    } else {
+      gTheta -= dx * 0.005;
+      gPhi -= dy * 0.005;
+    }
+  });
+  el.addEventListener('pointerup', () => { isDown = false; });
+  el.addEventListener('wheel', e => { gR += e.deltaY * 0.06; e.preventDefault(); }, { passive: false });
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  NAVIGATION FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+function toggleNavPanel() {
+  const panel = document.getElementById('nav-panel');
+  navPanelOpen = panel.classList.contains('collapsed');
+  panel.classList.toggle('collapsed');
+}
+
+function setNavClickMode(mode) {
+  navClickMode = mode;
+  document.getElementById('btn-set-start').classList.toggle('active', mode === 'start');
+  document.getElementById('btn-set-end').classList.toggle('active', mode === 'end');
+
+  const indicator = document.getElementById('mode-indicator');
+  document.getElementById('mode-title').textContent = mode === 'start' ? 'Set Start Point' : 'Set Destination';
+  document.getElementById('mode-desc').textContent = mode === 'start'
+    ? 'Click a building or the ground to set your start point'
+    : 'Click a building to set your destination';
+  indicator.classList.add('visible');
+  setTimeout(() => indicator.classList.remove('visible'), 2000);
+}
+
+function setNavPoint(x, z, label, isStart) {
+  const point = { x, z, label };
+
+  if (isStart) {
+    startPoint = point;
+    if (startMarker) scene.remove(startMarker);
+    // FIX #9: cancel previous animation
+    if (ringAnimId) { cancelAnimationFrame(ringAnimId); ringAnimId = null; }
+
+    const group = new THREE.Group();
+    const geo = new THREE.CylinderGeometry(0.6, 0.6, 0.3, 16);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x22c55e, emissiveIntensity: 0.4 });
+    const disk = new THREE.Mesh(geo, mat);
+    disk.position.y = 0.15;
+    group.add(disk);
+
+    // Pulsing ring
+    const ringGeo = new THREE.RingGeometry(0.9, 1.1, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.06;
+    group.add(ring);
+    group.position.set(x, 0, z);
+    startMarker = group;
+    scene.add(startMarker);
+
+    // FIX #9: store animation ID and check marker identity
+    const markerRef = startMarker;
+    function animateRing() {
+      if (startMarker !== markerRef) return; // marker was replaced
+      ring.scale.multiplyScalar(1.015);
+      ring.material.opacity *= 0.985;
+      if (ring.material.opacity < 0.1) { ring.scale.set(1,1,1); ring.material.opacity = 0.5; }
+      ringAnimId = requestAnimationFrame(animateRing);
+    }
+    animateRing();
+
+    document.getElementById('nav-from').value = label;
+  } else {
+    endPoint = point;
+    if (endMarker) scene.remove(endMarker);
+
+    const geo = new THREE.CylinderGeometry(0.6, 0.6, 0.3, 16);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.4 });
+    endMarker = new THREE.Mesh(geo, mat);
+    endMarker.position.set(x, 0.15, z);
+    scene.add(endMarker);
+
+    document.getElementById('nav-to').value = label;
+  }
+
+  // Auto-advance mode
+  if (isStart && !endPoint) {
+    setNavClickMode('end');
+    showStatus('Start set! Now click a building for your destination.');
+  } else if (!isStart && startPoint) {
+    showStatus('Both points set! Click "Get Directions".');
+  }
+}
+
+function showStatus(msg) {
+  const el = document.getElementById('nav-status');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  // FIX #11: Flash animation for attention
+  el.classList.remove('flash');
+  void el.offsetWidth; // reflow to restart animation
+  el.classList.add('flash');
+}
+
+function calculateRoute() {
+  // Legacy function - now using AI agent instead
+  getAgentDirections();
+}
+
+async function getAgentDirections() {
+  const questionInput = document.getElementById('nav-question');
+  const question = questionInput.value.trim();
+
+  if (!question) {
+    showStatus('Please enter a direction question first!');
+    return;
+  }
+
+  // Show loading state
+  showStatus('🤖 Asking myTigerTrail AI for directions...');
+  const getDirectionsBtn = document.querySelector('.nav-btn:not(.secondary)');
+  const originalText = getDirectionsBtn.textContent;
+  getDirectionsBtn.textContent = '🔄 Getting Directions...';
+  getDirectionsBtn.disabled = true;
+
+  try {
+    const response = await fetch('/api/directions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question: question })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Display the AI directions
+      displayAgentDirections(question, data.directions);
+      showStatus('✅ Directions received from myTigerTrail AI!');
+    } else {
+      showStatus('❌ ' + (data.directions || 'Failed to get directions'));
+    }
+
+  } catch (error) {
+    console.error('Error calling agent API:', error);
+    showStatus('❌ Error connecting to navigation service. Please try again.');
+  } finally {
+    // Reset button state
+    getDirectionsBtn.textContent = originalText;
+    getDirectionsBtn.disabled = false;
+  }
+}
+
+function displayAgentDirections(question, directions) {
+  const routeInfo = document.getElementById('route-info');
+  const routeSteps = document.getElementById('route-steps');
+
+  // Format the directions for display
+  const formattedDirections = directions
+    .split('\n')
+    .filter(line => line.trim())
+    .map(line => `<div class="step"><div class="step-text">${line}</div></div>`)
+    .join('');
+
+  routeSteps.innerHTML = `
+    <div style="margin-bottom: 12px; padding: 8px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; font-size: 11px;">
+      <strong>Your question:</strong> ${question}
+    </div>
+    ${formattedDirections}
+  `;
+
+  routeInfo.classList.remove('hidden');
+}
+
+function drawRoute(path) {
+  if (routeLine) scene.remove(routeLine);
+
+  // FIX #6: Use MeshStandardMaterial with emissive (not MeshBasicMaterial)
+  const points = path.map(p => new THREE.Vector3(p.x, 0.35, p.z));
+  const curve = new THREE.CatmullRomCurve3(points);
+  curve.curveType = 'catmullrom';
+  curve.tension = 0.5;
+
+  const tubeGeo = new THREE.TubeGeometry(curve, points.length * 6, 0.18, 8, false);
+  const tubeMat = new THREE.MeshStandardMaterial({
+    color: 0xf59e0b,
+    emissive: 0xf59e0b,
+    emissiveIntensity: 0.6,
+    transparent: true,
+    opacity: 0.9,
+    roughness: 0.3,
+  });
+
+  routeLine = new THREE.Mesh(tubeGeo, tubeMat);
+  scene.add(routeLine);
+
+  // Overview camera
+  const midX = (startPoint.x + endPoint.x) / 2;
+  const midZ = (startPoint.z + endPoint.z) / 2;
+  controls.flyTo(midX, midZ);
+}
+
+// FIX #12: Better route steps with intermediate landmarks
+function displayRouteInfo(path) {
+  let distance = 0;
+  for (let i = 1; i < path.length; i++) {
+    distance += Math.hypot(path[i].x - path[i-1].x, path[i].z - path[i-1].z);
+  }
+  distance = distance * 3; // scale to approximate meters
+  const minutes = Math.max(1, Math.ceil(distance / 80));
+
+  document.getElementById('route-distance').textContent = `~${distance.toFixed(0)}m`;
+  document.getElementById('route-eta').textContent = `${minutes} minute walk`;
+
+  const stepsDiv = document.getElementById('route-steps');
+  stepsDiv.innerHTML = '';
+
+  // Build meaningful steps from path waypoints
+  const steps = [];
+  steps.push(`Start at ${startPoint.label}`);
+
+  // Find named landmarks and distinct paths along the route
+  const seenPaths = new Set();
+  path.forEach(p => {
+    if (p.label && !seenPaths.has(p.label)) {
+      seenPaths.add(p.label);
+      steps.push(`Follow ${p.label}`);
+    }
+  });
+
+  // Find nearby buildings to reference as landmarks
+  const midIdx = Math.floor(path.length / 2);
+  if (path.length > 4) {
+    const midPt = path[midIdx];
+    const nearby = allBuildingData
+      .filter(b => Math.hypot(b.x - midPt.x, b.z - midPt.z) < 8)
+      .sort((a, b) => Math.hypot(a.x - midPt.x, a.z - midPt.z) - Math.hypot(b.x - midPt.x, b.z - midPt.z));
+    if (nearby.length > 0 && nearby[0].name !== endPoint.label) {
+      steps.push(`Pass ${nearby[0].name}`);
+    }
+  }
+
+  steps.push(`Arrive at ${endPoint.label}`);
+
+  steps.forEach((text, i) => {
+    const step = document.createElement('div');
+    step.className = 'step';
+    step.innerHTML = `<div class="step-num">${i + 1}</div><div class="step-text">${text}</div>`;
+    stepsDiv.appendChild(step);
+  });
+
+  document.getElementById('route-info').classList.remove('hidden');
+}
+
+function clearRoute() {
+  if (routeLine) { scene.remove(routeLine); routeLine = null; }
+  if (startMarker) { scene.remove(startMarker); startMarker = null; }
+  if (endMarker) { scene.remove(endMarker); endMarker = null; }
+  if (ringAnimId) { cancelAnimationFrame(ringAnimId); ringAnimId = null; }
+  startPoint = null; endPoint = null;
+  document.getElementById('nav-from').value = '';
+  document.getElementById('nav-to').value = '';
+  document.getElementById('route-info').classList.add('hidden');
+  document.getElementById('nav-status').classList.add('hidden');
+  setNavClickMode('start');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INTERACTION — Hover + Click (FIX #1, #7, #8, #15)
+// ═══════════════════════════════════════════════════════════════
+
+function onPointerMove(e) {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(buildingMeshes);
+
+  if (hoveredMesh && hoveredMesh !== selectedMesh) {
+    setEmissive(hoveredMesh, 0x000000);
+  }
+
+  if (hits.length > 0 && hits[0].object.userData.isBuilding) {
+    const hit = hits[0].object;
+    hoveredMesh = hit;
+    if (hit !== selectedMesh) setEmissive(hit, 0x221810);
+    document.body.style.cursor = 'pointer';
+
+    const zi = ZONE[hit.userData.zone] || ZONE.central;
+    tooltipName.textContent = hit.userData.name;
+    tooltipNum.textContent = `Building #${hit.userData.num}`;
+    tooltipZone.textContent = zi.label;
+    tooltipZone.style.background = zi.bg;
+    tooltipZone.style.color = zi.text;
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 8) + 'px';
+    tooltip.classList.add('visible');
+    return;
+  }
+
+  hoveredMesh = null;
+  document.body.style.cursor = 'default';
+  tooltip.classList.remove('visible');
+}
+
+function onClick(e) {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  // Check building hits first
+  const buildingHits = raycaster.intersectObjects(buildingMeshes);
+
+  if (selectedMesh) { setEmissive(selectedMesh, 0x000000); selectedMesh = null; }
+
+  if (buildingHits.length > 0 && buildingHits[0].object.userData.isBuilding) {
+    const hit = buildingHits[0].object;
+    selectedMesh = hit;
+    setEmissive(hit, 0x2a1a08);
+
+    // FIX #8 & #15: Use buildingIndex for reliable lookup
+    if (navPanelOpen) {
+      const idx = hit.userData.buildingIndex;
+      if (idx !== undefined && allBuildingData[idx]) {
+        const b = allBuildingData[idx];
+        const label = `${b.name} (#${b.num})`;
+        const isStart = navClickMode === 'start';
+        setNavPoint(b.x, b.z, label, isStart);
+      }
+    }
+    return;
+  }
+
+  // FIX #1 & #5: Ground click for nav — only when nav panel open and mode is 'start'
+  if (navPanelOpen && navClickMode === 'start') {
+    const groundHits = raycaster.intersectObject(groundMesh);
+    if (groundHits.length > 0) {
+      const p = groundHits[0].point;
+      setNavPoint(p.x, p.z, `Location (${p.x.toFixed(0)}, ${p.z.toFixed(0)})`, true);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════════════
+
+function initSearch() {
+  const input = document.getElementById('search-input');
+  const results = document.getElementById('search-results');
+
+  input.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    if (q.length < 2) { results.classList.remove('show'); return; }
+    const matches = allBuildingData.filter(b => b.name.toLowerCase().includes(q) || b.num === q).slice(0, 8);
+    if (!matches.length) { results.classList.remove('show'); return; }
+
+    results.innerHTML = matches.map((m, i) =>
+      `<div class="sr-item" data-idx="${allBuildingData.indexOf(m)}"><span class="sr-num">#${m.num}</span>${m.name}</div>`
+    ).join('');
+    results.classList.add('show');
+
+    results.querySelectorAll('.sr-item').forEach(el => {
+      el.addEventListener('click', () => {
+        // FIX #8: Use index for reliable lookup
+        const idx = parseInt(el.dataset.idx);
+        const b = allBuildingData[idx];
+        if (!b) return;
+        controls.flyTo(b.x, b.z);
+        results.classList.remove('show');
+        input.value = '';
+
+        if (navPanelOpen) {
+          const label = `${b.name} (#${b.num})`;
+          setNavPoint(b.x, b.z, label, navClickMode === 'start');
+        }
+      });
+    });
+  });
+
+  input.addEventListener('blur', () => setTimeout(() => results.classList.remove('show'), 200));
+}
+
+// FIX #13: Tower glow positioned above the tower, not blocked by it
+function addTowerGlow() {
+  const l = new THREE.PointLight(0xffd070, 1.2, 25);
+  l.position.set(28, 18, 7); // above tower height (14)
+  scene.add(l);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+initScene();
+createPaths();         // Visual paths first
+createAllBuildings();  // Buildings second
+buildNavigationGraph(); // FIX #4: Nav graph LAST (needs allBuildingData populated)
+addTowerGlow();
+initSearch();
+
+window.addEventListener('pointermove', onPointerMove);
+window.addEventListener('click', onClick);
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+setTimeout(() => {
+  document.getElementById('loader').classList.add('fade');
+  setTimeout(() => document.getElementById('loader').remove(), 600);
+}, 900);
+
+animate();
+</script>
+</body>
+</html>

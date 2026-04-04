@@ -18,51 +18,66 @@ An intelligent campus navigation application for the University of the Pacific S
 - [Ollama](https://ollama.ai/) installed and running locally
 - The Gemma3 model pulled: `ollama pull gemma3:latest`
 
-### 2. Environment Setup
+### 2. Install Dependencies
 
-Run the platform-appropriate setup script to create a virtual environment and install dependencies:
+Install the required Python packages:
 
-- **Windows PowerShell**: `scripts/setup_env.ps1`
-- **macOS / Linux**: `scripts/setup_env.sh`
+```bash
+pip install -r requirements.txt
+```
 
-### 3. Activate Virtual Environment
+### 3. Pull the AI Model
 
-- **Windows PowerShell**: `.\.venv\Scripts\Activate.ps1`
-- **macOS / Linux**: `source .venv/bin/activate`
+Ensure Ollama is running and pull the Gemma3 model:
+
+```bash
+ollama pull gemma3:latest
+```
 
 ## Usage
 
-### Option 1: Run the Web Server
+### Start the Web Application
 
-Start the FastAPI development server:
+Run the 3D campus map with AI navigation:
+
+```bash
+cd src
+python app.py
+```
+
+Then visit:
+- **3D Campus Map**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+
+## Features
+
+### 3D Campus Map Interface
+- **Interactive 3D Campus**: Explore the University of the Pacific Stockton campus in 3D
+- **Building Information**: Click on buildings to see details and information
+- **Search Functionality**: Search for specific buildings and locations
+- **AI Navigation Panel**: Ask myTigerTrail AI for directions using natural language
+- **Real-time Responses**: Get step-by-step directions based on the actual campus map
+
+### AI-Powered Navigation
+- **Dual Data Sources**: Uses both visual map analysis and PDF text context
+- **Natural Language Queries**: Ask questions like "How do I get from the library to the science building?"
+- **Contextual Responses**: AI considers building locations, pathways, and landmarks
+- **Multiple Access Methods**: Web interface, API, or command line
+
+### Option 2: API-Only Server
+
+Run just the FastAPI server without the 3D interface:
 
 ```bash
 python -m uvicorn src.main:app --reload
 ```
 
-Then visit:
-- **Home Page**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+### Option 3: Command Line Agent
 
-### Option 2: Use the API Directly
-
-Make a POST request to the `/directions` endpoint:
+Use the agent directly from command line:
 
 ```bash
-curl -X POST "http://localhost:8000/directions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "question": "How do I get from the library to the science building?"
-  }'
-```
-
-### Option 3: Run the Example Script
-
-Use the included example script for local testing without the web server:
-
-```bash
-python example_usage.py
+python src/agent.py "How do I get from the library to the science building?"
 ```
 
 This will demonstrate how to call the `get_directions()` function directly.
@@ -74,7 +89,9 @@ Pacific-Hack-2026/
 ├── src/
 │   ├── __init__.py
 │   ├── agent.py              # Core navigation logic with LLM integration
-│   ├── main.py               # FastAPI web application
+│   ├── main.py               # FastAPI API-only server
+│   ├── app.py                # Full web app with 3D interface
+│   ├── index.html            # 3D campus map interface
 │   ├── pacific_map.png       # Campus map image for visual analysis
 │   └── Pacific-Stk-CampusMap.pdf  # Campus map PDF for text context
 ├── scripts/
@@ -97,25 +114,29 @@ Pacific-Hack-2026/
 ## API Endpoints
 
 ### GET /
-Home page with welcome message and API information.
+Serve the 3D campus map interface with myTigerTrail navigation.
 
-### POST /directions
-Get campus navigation directions.
+### POST /api/directions
+Get campus navigation directions from the AI agent.
 
 **Request:**
 ```json
 {
-  "question": "How do I get from the parking lot to the science building?"
+  "question": "How do I get from the library to the science building?"
 }
 ```
 
 **Response:**
 ```json
 {
-  "question": "How do I get from the parking lot to the science building?",
-  "directions": "From the parking lot, head north toward the main campus entrance..."
+  "question": "How do I get from the library to the science building?",
+  "directions": "From the library, head east across the central quad...",
+  "success": true
 }
 ```
+
+### GET /api/buildings
+Get a list of campus buildings for the 3D interface.
 
 ### GET /health
 Health check endpoint.
