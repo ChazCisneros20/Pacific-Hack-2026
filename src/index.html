@@ -7,91 +7,88 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { overflow: hidden; background: #08090d; font-family: 'DM Sans', sans-serif; color: #e0e0e8; }
+  body { overflow: hidden; background: #f5f5f5; font-family: 'DM Sans', sans-serif; color: #2a2a2a; }
   canvas { display: block; }
 
   /* ── HUD ── */
   #hud { position: fixed; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
-  #hud h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.7); }
-  #hud .sub { font-size: 11px; color: rgba(255,255,255,.45); font-family: 'JetBrains Mono', monospace; margin-top: 3px; letter-spacing: 0.5px; }
+  #hud h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #1a1a1a; text-shadow: 0 1px 2px rgba(255,255,255,.8); }
+  #hud .sub { font-size: 11px; color: rgba(0,0,0,.55); font-family: 'JetBrains Mono', monospace; margin-top: 3px; letter-spacing: 0.5px; }
 
   /* ── Tooltip ── */
-  #tooltip { position: fixed; padding: 10px 14px; background: rgba(10,10,18,.92); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity .12s ease; z-index: 20; max-width: 260px; }
+  #tooltip { position: fixed; padding: 10px 14px; background: rgba(255,255,255,.94); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.12); border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity .12s ease; z-index: 20; max-width: 260px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
   #tooltip.visible { opacity: 1; }
-  #tooltip .name { font-weight: 700; font-size: 13px; color: #fff; }
-  #tooltip .num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.4); margin-top: 1px; }
+  #tooltip .name { font-weight: 700; font-size: 13px; color: #1a1a1a; }
+  #tooltip .num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(0,0,0,.55); margin-top: 1px; }
   #tooltip .zone { font-size: 11px; margin-top: 4px; padding: 2px 8px; border-radius: 4px; display: inline-block; }
 
   /* ── Legend ── */
-  #legend { position: fixed; bottom: 20px; left: 20px; z-index: 10; background: rgba(10,10,18,.82); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 14px 16px; font-size: 11px; }
-  #legend h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px; color: rgba(255,255,255,.35); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
+  #legend { position: fixed; bottom: 20px; left: 20px; z-index: 10; background: rgba(255,255,255,.88); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.1); border-radius: 12px; padding: 14px 16px; font-size: 11px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  #legend h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px; color: rgba(0,0,0,.55); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
   .leg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
   .leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
   /* ── Controls hint ── */
-  #controls { position: fixed; bottom: 20px; right: 20px; z-index: 10; font-size: 10px; color: rgba(255,255,255,.25); font-family: 'JetBrains Mono', monospace; text-align: right; line-height: 1.8; }
+  #controls { position: fixed; bottom: 20px; right: 20px; z-index: 10; font-size: 10px; color: rgba(0,0,0,.35); font-family: 'JetBrains Mono', monospace; text-align: right; line-height: 1.8; }
 
   /* ── Search ── */
   #search-box { position: fixed; top: 20px; right: 20px; z-index: 18; }
-  #search-box input { width: 220px; padding: 8px 12px; background: rgba(10,10,18,.8); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color .2s; }
-  #search-box input::placeholder { color: rgba(255,255,255,.3); }
-  #search-box input:focus { border-color: rgba(255,140,50,.5); }
-  #search-results { margin-top: 4px; background: rgba(10,10,18,.92); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; display: none; max-height: 280px; overflow-y: auto; }
+  #search-box input { width: 220px; padding: 8px 12px; background: rgba(255,255,255,.85); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.12); border-radius: 8px; color: #1a1a1a; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color .2s; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  #search-box input::placeholder { color: rgba(0,0,0,.35); }
+  #search-box input:focus { border-color: rgba(220, 100, 20, .8); }
+  #search-results { margin-top: 4px; background: rgba(255,255,255,.92); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.1); border-radius: 8px; overflow: hidden; display: none; max-height: 280px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
   #search-results.show { display: block; }
-  .sr-item { padding: 7px 12px; font-size: 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.04); transition: background .15s; }
-  .sr-item:hover { background: rgba(255,255,255,.06); }
+  .sr-item { padding: 7px 12px; font-size: 12px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.04); transition: background .15s; color: #1a1a1a; }
+  .sr-item:hover { background: rgba(0,0,0,.04); }
   .sr-item:last-child { border-bottom: none; }
-  .sr-item .sr-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.35); margin-right: 6px; }
+  .sr-item .sr-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(0,0,0,.45); margin-right: 6px; }
 
   /* ── Loader ── */
-  #loader { position: fixed; inset: 0; z-index: 999; background: #08090d; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s ease; }
+  #loader { position: fixed; inset: 0; z-index: 999; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s ease; }
   #loader.fade { opacity: 0; pointer-events: none; }
-  #loader h2 { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 6px; }
-  #loader p { font-size: 12px; color: rgba(255,255,255,.4); font-family: 'JetBrains Mono', monospace; }
-  .spinner { width: 28px; height: 28px; border: 2px solid rgba(255,255,255,.1); border-top-color: #f47920; border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 16px; }
+  #loader h2 { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+  #loader p { font-size: 12px; color: rgba(0,0,0,.55); font-family: 'JetBrains Mono', monospace; }
+  .spinner { width: 28px; height: 28px; border: 2px solid rgba(0,0,0,.1); border-top-color: #dc6414; border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── Navigation Panel ── */
-  #nav-panel { position: fixed; top: 64px; right: 20px; width: 260px; background: rgba(10,10,18,.92); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 16px; z-index: 15; transition: transform .3s ease, opacity .3s ease; }
-  #nav-panel.collapsed { transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none; }
-  #nav-toggle { position: fixed; top: 20px; right: 250px; width: 36px; height: 36px; background: rgba(245, 158, 11, 0.9); border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 16; transition: all .2s; }
-  #nav-toggle:hover { transform: scale(1.05); background: rgba(245, 158, 11, 1); }
-  #nav-toggle svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; }
-  #nav-panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #fff; display: flex; align-items: center; gap: 8px; }
-  #nav-panel h3::before { content: "→"; color: #f59e0b; font-weight: 700; }
+  #nav-panel { position: fixed; top: 64px; right: 20px; width: 260px; background: rgba(255,255,255,.92); backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,.1); border-radius: 12px; padding: 16px; z-index: 15; box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+  #nav-toggle { display: none; }
+  #nav-panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+  #nav-panel h3::before { content: "→"; color: #dc6414; font-weight: 700; }
   .nav-input-group { margin-bottom: 10px; }
-  .nav-input-group label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.5); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
-  .nav-input-group input { width: 100%; padding: 8px 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; color: #fff; font-size: 12px; outline: none; }
-  .nav-input-group input:focus { border-color: rgba(245, 158, 11, 0.5); }
-  .nav-btn { width: 100%; padding: 10px; margin-top: 8px; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: 12px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; }
-  .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
-  .nav-btn.secondary { background: rgba(255,255,255,.1); margin-top: 6px; }
-  .nav-btn.secondary:hover { background: rgba(255,255,255,.15); }
-  .nav-status { margin-top: 12px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 11px; line-height: 1.4; color: rgba(255,255,255,.8); transition: opacity .3s; }
+  .nav-input-group label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(0,0,0,.55); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+  .nav-input-group input { width: 100%; padding: 8px 10px; background: rgba(0,0,0,.02); border: 1px solid rgba(0,0,0,.1); border-radius: 6px; color: #1a1a1a; font-size: 12px; outline: none; }
+  .nav-input-group input:focus { border-color: rgba(220, 100, 20, 0.6); background: rgba(0,0,0,.04); }
+  .nav-btn { width: 100%; padding: 10px; margin-top: 8px; background: linear-gradient(135deg, #dc6414, #d95a00); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: 12px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 12px rgba(220, 100, 20, 0.25); }
+  .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(220, 100, 20, 0.35); }
+  .nav-btn.secondary { background: rgba(0,0,0,.05); color: #1a1a1a; margin-top: 6px; }
+  .nav-btn.secondary:hover { background: rgba(0,0,0,.1); }
+  .nav-status { margin-top: 12px; padding: 10px; background: rgba(220, 100, 20, 0.1); border-left: 3px solid #dc6414; border-radius: 4px; font-size: 11px; line-height: 1.4; color: rgba(0,0,0,.8); transition: opacity .3s; }
   .nav-status.hidden { display: none; }
   .nav-status.flash { animation: statusFlash .5s ease; }
-  @keyframes statusFlash { 0%,100%{background:rgba(245,158,11,.1)} 50%{background:rgba(245,158,11,.3)} }
-  .route-info { margin-top: 12px; padding: 12px; background: rgba(255,255,255,.05); border-radius: 8px; font-size: 11px; }
+  @keyframes statusFlash { 0%,100%{background:rgba(220,100,20,.1)} 50%{background:rgba(220,100,20,.25)} }
+  .route-info { margin-top: 12px; padding: 12px; background: rgba(0,0,0,.04); border-radius: 8px; font-size: 11px; }
   .route-info.hidden { display: none; }
-  .route-info .distance { font-size: 18px; font-weight: 700; color: #f59e0b; margin-bottom: 4px; }
-  .route-info .eta { color: rgba(255,255,255,.6); font-size: 11px; }
+  .route-info .distance { font-size: 18px; font-weight: 700; color: #dc6414; margin-bottom: 4px; }
+  .route-info .eta { color: rgba(0,0,0,.65); font-size: 11px; }
   .route-steps { margin-top: 8px; max-height: 150px; overflow-y: auto; }
-  .step { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.05); display: flex; gap: 8px; align-items: flex-start; }
+  .step { padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.05); display: flex; gap: 8px; align-items: flex-start; color: #1a1a1a; }
   .step:last-child { border-bottom: none; }
-  .step-num { width: 16px; height: 16px; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-num { width: 16px; height: 16px; background: rgba(220, 100, 20, 0.15); color: #dc6414; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
   .step-text { flex: 1; line-height: 1.3; }
 
   /* ── Nav mode selector ── */
   .nav-mode-btns { display: flex; gap: 4px; margin-top: 8px; }
-  .nav-mode-btns button { flex: 1; padding: 7px 4px; font-size: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 6px; color: rgba(255,255,255,.6); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
-  .nav-mode-btns button:hover { background: rgba(255,255,255,.1); }
-  .nav-mode-btns button.active { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b; }
+  .nav-mode-btns button { flex: 1; padding: 7px 4px; font-size: 10px; background: rgba(0,0,0,.04); border: 1px solid rgba(0,0,0,.08); border-radius: 6px; color: rgba(0,0,0,.6); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
+  .nav-mode-btns button:hover { background: rgba(0,0,0,.08); }
+  .nav-mode-btns button.active { background: rgba(220, 100, 20, 0.15); border-color: rgba(220, 100, 20, 0.4); color: #dc6414; }
 
   /* ── Mode indicator ── */
-  #mode-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10,10,18,.95); border: 1px solid rgba(245, 158, 11, 0.5); padding: 20px 30px; border-radius: 12px; pointer-events: none; opacity: 0; transition: opacity .3s; z-index: 100; text-align: center; }
+  #mode-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,.95); border: 1px solid rgba(220, 100, 20, 0.3); padding: 20px 30px; border-radius: 12px; pointer-events: none; opacity: 0; transition: opacity .3s; z-index: 100; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
   #mode-indicator.visible { opacity: 1; }
-  #mode-indicator h4 { color: #f59e0b; font-size: 14px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px; }
-  #mode-indicator p { color: rgba(255,255,255,.7); font-size: 12px; }
+  #mode-indicator h4 { color: #dc6414; font-size: 14px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px; }
+  #mode-indicator p { color: rgba(0,0,0,.7); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -123,15 +120,12 @@
 </div>
 
 <!-- Navigation UI -->
-<button id="nav-toggle" onclick="toggleNavPanel()">
-  <svg viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-</button>
-<div id="nav-panel" class="collapsed">
+<div id="nav-panel">
   <h3>🐯 myTigerTrail Navigation</h3>
 
   <div class="nav-input-group">
     <label>Ask for Directions</label>
-    <textarea id="nav-question" placeholder="How do I get from the library to the science building?" rows="3" style="width: 100%; padding: 8px 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; color: #fff; font-size: 12px; outline: none; resize: vertical; min-height: 60px;"></textarea>
+    <textarea id="nav-question" placeholder="How do I get from the library to the science building?" rows="3" style="width: 100%; padding: 8px 10px; background: rgba(0,0,0,.02); border: 1px solid rgba(0,0,0,.1); border-radius: 6px; color: #1a1a1a; font-size: 12px; outline: none; resize: vertical; min-height: 60px;"></textarea>
   </div>
 
   <button class="nav-btn" onclick="getAgentDirections()" style="margin-top:12px">🤖 Get AI Directions</button>
@@ -159,12 +153,12 @@
 
 // ── Zone definitions ──
 const ZONE = {
-  central:     { color: 0xc8a96e, label: 'Central Campus',        bg: 'rgba(200,169,110,.25)', text: '#c8a96e' },
-  residential: { color: 0xb05a3a, label: 'Residential / Greek',   bg: 'rgba(176,90,58,.25)',   text: '#cc7755' },
-  south:       { color: 0x5577bb, label: 'South Campus',          bg: 'rgba(85,119,187,.25)',  text: '#7799dd' },
-  athletic:    { color: 0xe88430, label: 'Athletic Campus',       bg: 'rgba(232,132,48,.25)',  text: '#e88430' },
-  field:       { color: 0x5a8f5a, label: 'Athletic Fields',       bg: 'rgba(90,143,90,.25)',   text: '#7ab87a' },
-  north:       { color: 0x8b6aad, label: 'North Campus / Health', bg: 'rgba(139,106,173,.25)', text: '#aa88cc' },
+  central:     { color: 0xd4a574, label: 'Central Campus',        bg: 'rgba(212,165,116,.25)', text: '#d4a574' },
+  residential: { color: 0xd17a52, label: 'Residential / Greek',   bg: 'rgba(209,122,82,.25)',   text: '#d17a52' },
+  south:       { color: 0x6b8dd4, label: 'South Campus',          bg: 'rgba(107,141,212,.25)',  text: '#6b8dd4' },
+  athletic:    { color: 0xef9944, label: 'Athletic Campus',       bg: 'rgba(239,153,68,.25)',  text: '#ef9944' },
+  field:       { color: 0x7fb069, label: 'Athletic Fields',       bg: 'rgba(127,176,105,.25)',   text: '#7fb069' },
+  north:       { color: 0xa89ac7, label: 'North Campus / Health', bg: 'rgba(168,154,199,.25)', text: '#a89ac7' },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -259,6 +253,29 @@ const _wc={}, _rc={};
 function wTex(c){ if(!_wc[c]) _wc[c]=makeWindowTexture(c); return _wc[c]; }
 function rTex(c){ if(!_rc[c]) _rc[c]=makeRoofTexture(c); return _rc[c]; }
 
+function createArrow() {
+  // Arrow cone pointing upward
+  const arrowGroup = new THREE.Group();
+  
+  // Shaft
+  const shaftGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.8, 8);
+  const arrowMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x1a1a1a, emissiveIntensity: 0.5 });
+  const shaft = new THREE.Mesh(shaftGeo, arrowMat);
+  shaft.position.y = 0.4;
+  arrowGroup.add(shaft);
+  
+  // Arrowhead (cone)
+  const headGeo = new THREE.ConeGeometry(0.35, 0.6, 8);
+  const head = new THREE.Mesh(headGeo, arrowMat);
+  head.position.y = 1.1;
+  arrowGroup.add(head);
+  
+  arrowGroup.scale.set(0.8, 0.8, 0.8);
+  arrowGroup.rotation.x = Math.PI;  // Flip upside down
+  arrowGroup.userData.isArrow = true;
+  return arrowGroup;
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  GLOBALS
 // ═══════════════════════════════════════════════════════════════
@@ -266,6 +283,8 @@ function rTex(c){ if(!_rc[c]) _rc[c]=makeRoofTexture(c); return _rc[c]; }
 let scene, camera, renderer, controls, raycaster, mouse;
 let buildingMeshes = [], hoveredMesh = null, selectedMesh = null, allBuildingData = [];
 let groundMesh = null;  // FIX #5: explicit reference to ground
+let selectedArrow = null;  // Arrow indicator above selected building
+let arrowBaseY = 0;  // Base Y position for bounce animation
 
 // Navigation state
 let navClickMode = 'start';  // 'start' or 'end'
@@ -273,7 +292,7 @@ let startPoint = null, endPoint = null;
 let routeLine = null, startMarker = null, endMarker = null;
 let ringAnimId = null;  // FIX #9: track animation frame ID
 let pathGraph = null;
-let navPanelOpen = false;
+let navPanelOpen = true;  // Always open now
 
 const tooltip = document.getElementById('tooltip');
 const tooltipName = tooltip.querySelector('.name');
@@ -285,8 +304,9 @@ const tooltipZone = tooltip.querySelector('.zone');
 // ═══════════════════════════════════════════════════════════════
 
 function mats(color) {
-  const wall = new THREE.MeshStandardMaterial({ map: wTex(color), color: new THREE.Color(color).multiplyScalar(0.9), roughness: 0.7, metalness: 0.05 });
-  const roof = new THREE.MeshStandardMaterial({ map: rTex(color), color: new THREE.Color(color).multiplyScalar(0.6), roughness: 0.85 });
+  const baseColor = new THREE.Color(color);
+  const wall = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.6, metalness: 0.0 });
+  const roof = new THREE.MeshStandardMaterial({ color: baseColor.clone().multiplyScalar(0.8), roughness: 0.7, metalness: 0.0 });
   return [wall, wall, roof, roof, wall, wall];
 }
 
@@ -346,7 +366,7 @@ function createExtruded({ points, height, color, name, num, zone, pos }) {
   shape.closePath();
   const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
   geo.rotateX(-Math.PI / 2);
-  const mat = new THREE.MeshStandardMaterial({ map: wTex(color), color: new THREE.Color(color).multiplyScalar(0.88), roughness: 0.7, metalness: 0.05 });
+  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.6, metalness: 0.0 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(pos.x, 0, pos.z);
   mesh.castShadow = true; mesh.receiveShadow = true;
@@ -360,7 +380,7 @@ function createExtruded({ points, height, color, name, num, zone, pos }) {
 
 function createField({ x, z, w, d, name, num }) {
   const geo = new THREE.BoxGeometry(w, 0.18, d);
-  const mat = new THREE.MeshStandardMaterial({ map: makeFieldTexture(), roughness: 0.9 });
+  const mat = new THREE.MeshStandardMaterial({ color: ZONE.field.color, roughness: 0.8, metalness: 0.0 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(x, 0.09, z); mesh.receiveShadow = true;
   mesh.userData = { name, num, zone: 'field', baseColor: ZONE.field.color, isBuilding: true, buildingIndex: allBuildingData.length };
@@ -377,11 +397,11 @@ function createAllBuildings() {
   const S = ZONE.south.color, A = ZONE.athletic.color, N = ZONE.north.color;
 
   // ═══ CENTRAL CAMPUS ═══
-  createBox({ x:28, z:7, w:2.5, d:2.5, h:14, color:C, name:'Robert E. Burns Tower', num:'10', zone:'central' });
-  createBox({ x:24, z:7, w:4, d:3, h:4, color:C, name:'Buck Memorial Hall', num:'12', zone:'central' });
-  createBox({ x:28, z:12, w:5, d:4, h:5, color:C, name:'Conservatory of Music, Faye Spanos Concert Hall', num:'14', zone:'central' });
-  createBox({ x:24, z:12, w:3, d:2.5, h:3.5, color:C, name:'Rehearsal Hall', num:'15', zone:'central' });
-  createBox({ x:22, z:10, w:3, d:2.5, h:3.5, color:C, name:'Recital Hall', num:'16', zone:'central' });
+  createBox({ x:31, z:7, w:2.5, d:2.5, h:14, color:C, name:'Robert E. Burns Tower', num:'10', zone:'central' });
+  createBox({ x:24, z:10, w:4, d:3, h:4, color:C, name:'Buck Memorial Hall', num:'12', zone:'central' });
+  createBox({ x:29, z:14, w:5, d:4, h:5, color:C, name:'Conservatory of Music, Faye Spanos Concert Hall', num:'14', zone:'central' });
+  createBox({ x:24, z:15, w:3, d:2.5, h:3.5, color:C, name:'Rehearsal Hall', num:'15', zone:'central' });
+  createBox({ x:21, z:12, w:3, d:2.5, h:3.5, color:C, name:'Recital Hall', num:'16', zone:'central' });
   createComposite({ x:18, z:10, blocks:[{ dx:0, dz:0, w:7, d:5, h:4.5 }, { dx:-2, dz:-3, w:3, d:2, h:4.5 }], color:C, name:'William Knox Holt Memorial Library', num:'18', zone:'central' });
   createBox({ x:12, z:3, w:3.5, d:3, h:4, color:C, name:'Anderson Hall', num:'27', zone:'central' });
   createBox({ x:9, z:5, w:3, d:3, h:3.5, color:C, name:'Baun Hall', num:'28', zone:'central' });
@@ -398,7 +418,7 @@ function createAllBuildings() {
 
   // Knoles Lawn (decorative)
   const lawnGeo = new THREE.BoxGeometry(4, 0.08, 4);
-  const lawnMat = new THREE.MeshStandardMaterial({ color: 0x3a6830, roughness: 0.95 });
+  const lawnMat = new THREE.MeshStandardMaterial({ color: 0x7fb069, roughness: 0.85, metalness: 0.0 });
   const lawn = new THREE.Mesh(lawnGeo, lawnMat); lawn.position.set(20, 0.04, 7); lawn.receiveShadow = true; scene.add(lawn);
 
   createComposite({ x:8, z:0, blocks:[{ dx:0, dz:0, w:6, d:4, h:3.5 }, { dx:3, dz:-2, w:3, d:3, h:3.5 }], color:C, name:'Don and Karen DeRosa University Center', num:'60', zone:'central' });
@@ -410,66 +430,65 @@ function createAllBuildings() {
   createBox({ x:34, z:14, w:2.5, d:2, h:3, color:R, name:'Kappa Psi, ΚΨ', num:'8', zone:'residential' });
 
   // ═══ RESIDENTIAL / GREEK ═══
-  createComposite({ x:20, z:-4, blocks:[{ dx:0, dz:0, w:6, d:4, h:5 }, { dx:3.5, dz:-1, w:3, d:3, h:5 }], color:R, name:'Grace Covell Hall', num:'41', zone:'residential' });
-  createBox({ x:18, z:-6, w:3, d:3, h:3.5, color:C, name:'Hand Hall', num:'42', zone:'central' });
-  createBox({ x:25, z:-14, w:3, d:2.5, h:3.5, color:R, name:'Delta Delta Delta, ΔΔΔ', num:'44', zone:'residential' });
-  createBox({ x:19, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Kappa Alpha Theta, ΚΑΘ', num:'45', zone:'residential' });
-  createBox({ x:16, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Delta Gamma, ΔΓ', num:'46', zone:'residential' });
-  createBox({ x:13, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Sigma Chi, ΣΧ', num:'47', zone:'residential' });
-  createBox({ x:10, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Beta Theta Pi, ΒΘΠ', num:'48', zone:'residential' });
-  createBox({ x:7, z:-10, w:3, d:2.5, h:3.5, color:R, name:'Alpha Phi, ΑΦ', num:'49', zone:'residential' });
+  createComposite({ x:20, z:-5, blocks:[{ dx:0, dz:0, w:6, d:4, h:5 }, { dx:3.5, dz:-1, w:3, d:3, h:5 }], color:R, name:'Grace Covell Hall', num:'41', zone:'residential' });
+  createBox({ x:15, z:-8, w:3, d:3, h:3.5, color:C, name:'Hand Hall', num:'42', zone:'central' });
+  createBox({ x:27, z:-16, w:3, d:2.5, h:3.5, color:R, name:'Delta Delta Delta, ΔΔΔ', num:'44', zone:'residential' });
+  createBox({ x:21, z:-12, w:3, d:2.5, h:3.5, color:R, name:'Kappa Alpha Theta, ΚΑΘ', num:'45', zone:'residential' });
+  createBox({ x:18, z:-12, w:3, d:2.5, h:3.5, color:R, name:'Delta Gamma, ΔΓ', num:'46', zone:'residential' });
+  createBox({ x:15, z:-12, w:3, d:2.5, h:3.5, color:R, name:'Sigma Chi, ΣΧ', num:'47', zone:'residential' });
+  createBox({ x:12, z:-12, w:3, d:2.5, h:3.5, color:R, name:'Beta Theta Pi, ΒΘΠ', num:'48', zone:'residential' });
+  createBox({ x:9, z:-12, w:3, d:2.5, h:3.5, color:R, name:'Alpha Phi, ΑΦ', num:'49', zone:'residential' });
 
   // ═══ FITNESS / QUAD AREA ═══
-  createBox({ x:2, z:-4, w:4, d:3, h:3.5, color:C, name:'Baun Fitness Center', num:'61', zone:'central' });
-  createBox({ x:0, z:-2, w:3, d:3, h:3.5, color:C, name:'Bannister Hall', num:'62', zone:'central' });
-  createBox({ x:0, z:-5, w:3, d:2.5, h:3.5, color:C, name:'Owen Hall', num:'63', zone:'central' });
+  createBox({ x:-2, z:-4, w:4, d:3, h:3.5, color:C, name:'Baun Fitness Center', num:'61', zone:'central' });
+  createBox({ x:-2, z:-8, w:3, d:3, h:3.5, color:C, name:'Bannister Hall', num:'62', zone:'central' });
+  createBox({ x:2, z:-8, w:3, d:2.5, h:3.5, color:C, name:'Owen Hall', num:'63', zone:'central' });
   createBox({ x:2, z:2, w:5, d:5, h:5, color:C, name:'Main Gymnasium', num:'64', zone:'central' });
   createComposite({ x:-4, z:2, blocks:[{ dx:0, dz:0, w:5, d:3.5, h:4 }, { dx:0, dz:-2.5, w:3, d:2, h:4 }], color:C, name:'College of the Pacific, Wendell Phillips Center', num:'68', zone:'central' });
-  createBox({ x:-6, z:-1, w:3, d:2.5, h:3.5, color:C, name:'John Ballantyne Hall', num:'70', zone:'central' });
-  createBox({ x:-6, z:1.5, w:3, d:2.5, h:3.5, color:C, name:'George Wilson Hall (School of International Studies)', num:'71', zone:'central' });
-  createBox({ x:-8, z:-1, w:2.5, d:2.5, h:3, color:C, name:'Jessie Ballantyne Hall', num:'72', zone:'central' });
-  createBox({ x:-5, z:5, w:3, d:2.5, h:3, color:C, name:'Bechtel International Center', num:'73', zone:'central' });
-  createBox({ x:-4, z:8, w:2.5, d:2, h:3, color:C, name:'Casa Jackson', num:'74', zone:'central' });
-  createBox({ x:-7, z:8, w:2.5, d:2, h:3, color:C, name:'Casa Werner', num:'75', zone:'central' });
-  createBox({ x:-10, z:-3, w:2.5, d:2, h:3, color:C, name:'Carter House', num:'76', zone:'central' });
-  createBox({ x:-8, z:4, w:3, d:2.5, h:3.5, color:C, name:'Callison Hall', num:'77', zone:'central' });
+  createBox({ x:-6, z:-2, w:3, d:2.5, h:3.5, color:C, name:'John Ballantyne Hall', num:'70', zone:'central' });
+  createBox({ x:-6, z:2, w:3, d:2.5, h:3.5, color:C, name:'George Wilson Hall (School of International Studies)', num:'71', zone:'central' });
+  createBox({ x:-10, z:-2, w:2.5, d:2.5, h:3, color:C, name:'Jessie Ballantyne Hall', num:'72', zone:'central' });
+  createBox({ x:-5, z:6, w:3, d:2.5, h:3, color:C, name:'Bechtel International Center', num:'73', zone:'central' });
+  createBox({ x:-1, z:10, w:2.5, d:2, h:3, color:C, name:'Casa Jackson', num:'74', zone:'central' });
+  createBox({ x:-7, z:10, w:2.5, d:2, h:3, color:C, name:'Casa Werner', num:'75', zone:'central' });
+  createBox({ x:-10, z:-5, w:2.5, d:2, h:3, color:C, name:'Carter House', num:'76', zone:'central' });
+  createBox({ x:-8, z:5, w:3, d:2.5, h:3.5, color:C, name:'Callison Hall', num:'77', zone:'central' });
   // FIX #2: Elbert Covell Hall is #78
-  createComposite({ x:-8, z:8, blocks:[{ dx:0, dz:0, w:5, d:3.5, h:4 }, { dx:2.5, dz:2, w:2.5, d:2, h:4 }], color:R, name:'Elbert Covell Hall / Raymond Great Hall', num:'78', zone:'residential' });
-  createBox({ x:-14, z:10, w:2.5, d:2, h:3, color:C, name:'Pacific Technology Customer Support Center', num:'79', zone:'central' });
-  createBox({ x:-14, z:8, w:2.5, d:2, h:2.5, color:R, name:'Raymond Lodge', num:'80', zone:'residential' });
-  createBox({ x:-10, z:-5, w:2, d:2, h:2.5, color:C, name:'Eiselen House', num:'81', zone:'central' });
-  createBox({ x:-12, z:8, w:2, d:2, h:2.5, color:R, name:'Ritter House', num:'82', zone:'residential' });
-  createBox({ x:-12, z:6, w:2, d:2, h:2.5, color:R, name:'Wemyss Hall', num:'83', zone:'residential' });
-  createBox({ x:-12, z:12, w:2, d:2, h:2.5, color:R, name:'Farley House', num:'84', zone:'residential' });
-  createBox({ x:-14, z:12, w:2, d:2, h:2.5, color:R, name:'Price House', num:'85', zone:'residential' });
+  createComposite({ x:-8, z:10, blocks:[{ dx:0, dz:0, w:5, d:3.5, h:4 }, { dx:2.5, dz:2, w:2.5, d:2, h:4 }], color:R, name:'Elbert Covell Hall / Raymond Great Hall', num:'78', zone:'residential' });
+  createBox({ x:-14, z:12, w:2.5, d:2, h:3, color:C, name:'Pacific Technology Customer Support Center', num:'79', zone:'central' });
+  createBox({ x:-14, z:10, w:2.5, d:2, h:2.5, color:R, name:'Raymond Lodge', num:'80', zone:'residential' });
+  createBox({ x:-12, z:10, w:2, d:2, h:2.5, color:R, name:'Ritter House', num:'82', zone:'residential' });
+  createBox({ x:-12, z:8, w:2, d:2, h:2.5, color:R, name:'Wemyss Hall', num:'83', zone:'residential' });
+  createBox({ x:-12, z:13, w:2, d:2, h:2.5, color:R, name:'Farley House', num:'84', zone:'residential' });
+  createBox({ x:-14, z:14, w:2, d:2, h:2.5, color:R, name:'Price House', num:'85', zone:'residential' });
 
   // ═══ SOUTH CAMPUS ═══
-  createBox({ x:3, z:17, w:4, d:3, h:4, color:S, name:'Benerd College', num:'101', zone:'south' });
-  createBox({ x:7, z:22, w:5, d:3.5, h:4, color:S, name:'Biological Sciences Center', num:'103', zone:'south' });
-  createBox({ x:3, z:35, w:4, d:3, h:3.5, color:S, name:'Classroom Building', num:'107', zone:'south' });
-  createBox({ x:-1, z:35, w:3.5, d:3, h:3.5, color:S, name:'Olson Hall', num:'109', zone:'south' });
-  createBox({ x:3, z:28, w:4, d:3, h:3.5, color:S, name:'Biological Laboratories', num:'110', zone:'south' });
-  createBox({ x:0, z:25, w:3, d:2.5, h:3, color:S, name:'DeMarcus Brown Studio Theatre Arts', num:'111', zone:'south' });
-  createBox({ x:0, z:18, w:3, d:2.5, h:3, color:S, name:'Alex and Jeri Vereschagin Alumni House', num:'112', zone:'south' });
-  createComposite({ x:-5, z:20, blocks:[{ dx:0, dz:0, w:5, d:4, h:4.5 }, { dx:-2, dz:2, w:3, d:2.5, h:4.5 }], color:S, name:'Long Theatre (Box Office)', num:'115', zone:'south' });
-  createBox({ x:-8, z:25, w:3.5, d:3, h:3.5, color:S, name:'Communication Department (Psychology)', num:'116', zone:'south' });
+  createBox({ x:5, z:20, w:4, d:3, h:4, color:S, name:'Benerd College', num:'101', zone:'south' });
+  createBox({ x:9, z:25, w:5, d:3.5, h:4, color:S, name:'Biological Sciences Center', num:'103', zone:'south' });
+  createBox({ x:5, z:31, w:4, d:3, h:3.5, color:S, name:'Classroom Building', num:'107', zone:'south' });
+  createBox({ x:0, z:32, w:3.5, d:3, h:3.5, color:S, name:'Olson Hall', num:'109', zone:'south' });
+  createBox({ x:5, z:26, w:4, d:3, h:3.5, color:S, name:'Biological Laboratories', num:'110', zone:'south' });
+  createBox({ x:2, z:23, w:3, d:2.5, h:3, color:S, name:'DeMarcus Brown Studio Theatre Arts', num:'111', zone:'south' });
+  createBox({ x:2, z:18, w:3, d:2.5, h:3, color:S, name:'Alex and Jeri Vereschagin Alumni House', num:'112', zone:'south' });
+  createComposite({ x:-3, z:21, blocks:[{ dx:0, dz:0, w:5, d:4, h:4.5 }, { dx:-2, dz:2, w:3, d:2.5, h:4.5 }], color:S, name:'Long Theatre (Box Office)', num:'115', zone:'south' });
+  createBox({ x:-7, z:27, w:3.5, d:3, h:3.5, color:S, name:'Communication Department (Psychology)', num:'116', zone:'south' });
 
   // Gardens (decorative but navigable)
   const gardenGeo = new THREE.BoxGeometry(3, 0.1, 2.5);
-  const gardenMat = new THREE.MeshStandardMaterial({ color: 0x3a7030, roughness: 0.95 });
-  const garden = new THREE.Mesh(gardenGeo, gardenMat); garden.position.set(-11, 0.05, 27); garden.receiveShadow = true; scene.add(garden);
-  allBuildingData.push({ name:'Robb Garden', num:'117', zone:'south', mesh:garden, x:-11, z:27, w:3, d:2.5 });
+  const gardenMat = new THREE.MeshStandardMaterial({ color: 0x8bc34a, roughness: 0.85, metalness: 0.0 });
+  const garden = new THREE.Mesh(gardenGeo, gardenMat); garden.position.set(-10, 0.05, 30); garden.receiveShadow = true; scene.add(garden);
+  allBuildingData.push({ name:'Robb Garden', num:'117', zone:'south', mesh:garden, x:-10, z:30, w:3, d:2.5 });
 
-  createBox({ x:-12, z:25, w:4, d:3, h:3.5, color:S, name:'Engineering & Computer Science South Campus Labs', num:'118', zone:'south' });
+  createBox({ x:-10, z:26, w:4, d:3, h:3.5, color:S, name:'Engineering & Computer Science South Campus Labs', num:'118', zone:'south' });
 
   const ngGeo = new THREE.BoxGeometry(2.5, 0.1, 2);
-  const ngMat = new THREE.MeshStandardMaterial({ color: 0x4a8040, roughness: 0.95 });
-  const ng = new THREE.Mesh(ngGeo, ngMat); ng.position.set(-9, 0.05, 30); ng.receiveShadow = true; scene.add(ng);
-  allBuildingData.push({ name:'Bon Appétit Company Native Garden', num:'119', zone:'south', mesh:ng, x:-9, z:30, w:2.5, d:2 });
+  const ngMat = new THREE.MeshStandardMaterial({ color: 0x9ccc65, roughness: 0.85, metalness: 0.0 });
+  const ng = new THREE.Mesh(ngGeo, ngMat); ng.position.set(-8, 0.05, 33); ng.receiveShadow = true; scene.add(ng);
+  allBuildingData.push({ name:'Bon Appétit Company Native Garden', num:'119', zone:'south', mesh:ng, x:-8, z:33, w:2.5, d:2 });
 
-  createBox({ x:-10, z:35, w:4, d:3, h:3.5, color:S, name:'Pacific Geosciences Center, Reynolds Art Gallery', num:'120', zone:'south' });
-  createBox({ x:-14, z:35, w:3.5, d:3, h:3, color:S, name:'Jeannette Powell Art Center', num:'122', zone:'south' });
-  createBox({ x:-18, z:35, w:2.5, d:2.5, h:2.5, color:S, name:'Ceramics Studio', num:'124', zone:'south' });
+  createBox({ x:-8, z:32, w:4, d:3, h:3.5, color:S, name:'Pacific Geosciences Center, Reynolds Art Gallery', num:'120', zone:'south' });
+  createBox({ x:-12, z:33, w:3.5, d:3, h:3, color:S, name:'Jeannette Powell Art Center', num:'122', zone:'south' });
+  createBox({ x:-15, z:32, w:2.5, d:2.5, h:2.5, color:S, name:'Ceramics Studio', num:'124', zone:'south' });
 
   // ═══ ATHLETIC CAMPUS ═══
   createBox({ x:-10, z:20, w:5, d:4, h:5, color:A, name:'Janssen-Lagorio Gymnasium and Performance Center', num:'130', zone:'athletic' });
@@ -572,11 +591,9 @@ const pathDefinitions = [
 ];
 
 function createPaths() {
-  const pTex = makePathTexture();
   pathDefinitions.forEach(p => {
     const geo = new THREE.BoxGeometry(p.w, 0.06, p.d);
-    const mat = new THREE.MeshStandardMaterial({ map: pTex.clone(), color: 0x555775, roughness: 0.9 });
-    mat.map.repeat.set(p.w > p.d ? p.w/6 : 1, p.d > p.w ? p.d/6 : 1);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xb8b8b8, roughness: 0.7, metalness: 0.0 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(p.x, 0.04, p.z); mesh.receiveShadow = true; scene.add(mesh);
   });
@@ -718,8 +735,8 @@ function findPath(startX, startZ, endX, endZ) {
 
 function initScene() {
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0b10);
-  scene.fog = new THREE.FogExp2(0x0a0b10, 0.0035);
+  scene.background = new THREE.Color(0xf5f5f5);
+  scene.fog = new THREE.FogExp2(0xf5f5f5, 0.0025);
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 600);
   camera.position.set(60, 50, 60);
@@ -730,13 +747,13 @@ function initScene() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.0;
   document.body.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0x9090bb, 0.5));
-  scene.add(new THREE.HemisphereLight(0xddeeff, 0x223344, 0.4));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd5d5d5, 0.45));
 
-  const sun = new THREE.DirectionalLight(0xfff4e0, 1.05);
+  const sun = new THREE.DirectionalLight(0xfff8e6, 1.0);
   sun.position.set(40, 70, 25); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -95; sun.shadow.camera.right = 95;
@@ -744,23 +761,20 @@ function initScene() {
   sun.shadow.camera.near = 1; sun.shadow.camera.far = 200;
   sun.shadow.bias = -0.001; scene.add(sun);
 
-  const fill = new THREE.DirectionalLight(0xaabbdd, 0.35);
+  const fill = new THREE.DirectionalLight(0xe8e8ff, 0.3);
   fill.position.set(-30, 30, -20); scene.add(fill);
 
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
 
-  // FIX #5: Store explicit ground reference
-  const gGeo = new THREE.PlaneGeometry(140, 130);
-  const gMat = new THREE.MeshStandardMaterial({ map: makeGroundTexture(), roughness: 0.95 });
+  // FIX #5: Store explicit ground reference — Circular map
+  const gGeo = new THREE.CircleGeometry(55, 64);
+  const gMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.75, metalness: 0.0 });
   groundMesh = new THREE.Mesh(gGeo, gMat);
   groundMesh.rotation.x = -Math.PI / 2;
   groundMesh.position.y = -0.01;
   groundMesh.receiveShadow = true;
   scene.add(groundMesh);
-
-  const grid = new THREE.GridHelper(140, 70, 0x202240, 0x181a30);
-  grid.position.y = 0.008; scene.add(grid);
 
   initOrbitControls();
 }
@@ -825,12 +839,6 @@ function initOrbitControls() {
 // ═══════════════════════════════════════════════════════════════
 //  NAVIGATION FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
-
-function toggleNavPanel() {
-  const panel = document.getElementById('nav-panel');
-  navPanelOpen = panel.classList.contains('collapsed');
-  panel.classList.toggle('collapsed');
-}
 
 function setNavClickMode(mode) {
   navClickMode = mode;
@@ -1128,11 +1136,19 @@ function onClick(e) {
   const buildingHits = raycaster.intersectObjects(buildingMeshes);
 
   if (selectedMesh) { setEmissive(selectedMesh, 0x000000); selectedMesh = null; }
+  if (selectedArrow) { scene.remove(selectedArrow); selectedArrow = null; }
 
   if (buildingHits.length > 0 && buildingHits[0].object.userData.isBuilding) {
     const hit = buildingHits[0].object;
     selectedMesh = hit;
     setEmissive(hit, 0x2a1a08);
+    
+    // Create and position arrow above building
+    selectedArrow = createArrow();
+    const bbox = new THREE.Box3().setFromObject(hit);
+    selectedArrow.position.copy(hit.position);
+    selectedArrow.position.y = bbox.max.y + 1.5;
+    scene.add(selectedArrow);
 
     // FIX #8 & #15: Use buildingIndex for reliable lookup
     if (navPanelOpen) {
@@ -1211,6 +1227,16 @@ function addTowerGlow() {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  
+  // Keep arrow above selected building with bouncing animation
+  if (selectedArrow && selectedMesh) {
+    const bbox = new THREE.Box3().setFromObject(selectedMesh);
+    selectedArrow.position.copy(selectedMesh.position);
+    arrowBaseY = bbox.max.y + 1.5;
+    const bounce = Math.sin(Date.now() * 0.005) * 0.3;  // Bounce amplitude
+    selectedArrow.position.y = arrowBaseY + bounce;
+  }
+  
   renderer.render(scene, camera);
 }
 
