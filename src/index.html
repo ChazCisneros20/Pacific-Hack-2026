@@ -150,6 +150,21 @@
   .ev-nav:hover { background:#1557b0; }
   #events-empty { padding:28px; text-align:center; color:var(--text3); font-size:13px; }
 
+  /* ── Library panel ── */
+  #library-panel { position:fixed; bottom:20px; right:20px; z-index:26; width:280px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-lg); display:none; overflow:hidden; }
+  #library-panel.show { display:block; }
+  #lib-hdr { padding:12px 14px 10px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; justify-content:space-between; align-items:center; }
+  #lib-close { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; line-height:1; padding:0 2px; transition:color .12s; }
+  #lib-close:hover { color:var(--red); }
+  #lib-body { padding:12px 14px 14px; display:none; }
+  #library-panel.loaded #lib-body { display:block; }
+  #library-panel.loaded #lib-loading { display:none; }
+  #lib-status-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  #lib-badge { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; }
+  #lib-badge.open  { background:#e6f4ea; color:#1E8E3E; border:1px solid #b7dfc2; }
+  #lib-badge.closed { background:#fce8e6; color:#D93025; border:1px solid #f5c2be; }
+  #lib-rooms-section { background:var(--bg); border-radius:var(--radius-sm); padding:10px 12px; }
+
   /* ── Event beacon popup ── */
   #event-popup { position:fixed; z-index:25; width:265px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-lg); display:none; pointer-events:auto; overflow:hidden; }
   #event-popup.show { display:block; }
@@ -234,6 +249,17 @@
   </div>
 </div>
 
+<!-- Library quick-access button -->
+<div id="library-btn-wrap" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:24">
+  <button id="library-quick-btn" onclick="openLibraryPanel()"
+    style="display:flex;align-items:center;gap:7px;padding:9px 18px;background:var(--surface);border:1.5px solid var(--border);border-radius:24px;cursor:pointer;font-family:'Google Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text);box-shadow:var(--shadow);transition:all .18s"
+    onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'"
+    onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+    <span>📚</span> Library Hours &amp; Rooms
+    <span id="lib-quick-badge" style="display:none;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700"></span>
+  </button>
+</div>
+
 <!-- Events Panel -->
 <div id="events-panel">
   <button id="events-toggle" onclick="toggleEventsList()">
@@ -247,6 +273,39 @@
     <div id="events-filter"></div>
     <div id="events-scroll"></div>
   </div>
+</div>
+
+<!-- Library status panel -->
+<div id="library-panel">
+  <div id="lib-hdr">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px">📚</span>
+      <div>
+        <div id="lib-name" style="font-weight:700;font-size:13px;color:var(--text)">Holt Memorial Library</div>
+        <div id="lib-hours-sub" style="font-size:11px;color:var(--text3);margin-top:1px"></div>
+      </div>
+    </div>
+    <button id="lib-close" onclick="closeLibraryPanel()">✕</button>
+  </div>
+  <div id="lib-body">
+    <div id="lib-status-row">
+      <span id="lib-badge">…</span>
+      <span id="lib-hours-text" style="font-size:12px;color:var(--text2)"></span>
+    </div>
+    <div id="lib-rooms-section">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:6px">Study Rooms</div>
+      <div id="lib-rooms-bar" style="height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin-bottom:6px">
+        <div id="lib-rooms-fill" style="height:100%;background:var(--green);width:0%;transition:width .5s"></div>
+      </div>
+      <div id="lib-rooms-text" style="font-size:12px;color:var(--text2)"></div>
+    </div>
+    <a id="lib-book-btn" href="https://pacific.libcal.com/spaces" target="_blank"
+       style="display:block;margin-top:10px;text-align:center;padding:8px;background:var(--blue);color:#fff;border-radius:var(--radius-sm);font-size:12px;font-weight:600;text-decoration:none;transition:background .15s"
+       onmouseover="this.style.background='#1557b0'" onmouseout="this.style.background='var(--blue)'">
+      Book a Study Room →
+    </a>
+  </div>
+  <div id="lib-loading" style="padding:20px;text-align:center;color:var(--text3);font-size:12px">Loading…</div>
 </div>
 
 <!-- Event beacon popup -->
@@ -1238,6 +1297,57 @@ function calculateRoute() {
   showStatus('Route drawn on map!');
 }
 
+function parseAndSetNavFromQuestion(question) {
+  const q = question.toLowerCase();
+
+  // Match "from X to Y" or "X to Y" patterns
+  const fromToMatch = q.match(/from\s+(.+?)\s+to\s+(.+?)(?:\?|$|\.)/i)
+    || q.match(/(.+?)\s+to\s+(.+?)(?:\?|$|\.)/i);
+
+  if (!fromToMatch) return;
+
+  const fromRaw = fromToMatch[1].trim();
+  const toRaw   = fromToMatch[2].trim();
+
+  // Find best matching building for a search string
+  function findBuilding(search) {
+    const s = search.toLowerCase();
+    // Try exact substring match first
+    let match = allBuildingData.find(b => b.name.toLowerCase().includes(s));
+    if (match) return match;
+    // Try individual words
+    const words = s.split(/\s+/).filter(w => w.length > 3);
+    for (const word of words) {
+      match = allBuildingData.find(b => b.name.toLowerCase().includes(word));
+      if (match) return match;
+    }
+    return null;
+  }
+
+  const fromBuilding = findBuilding(fromRaw);
+  const toBuilding   = findBuilding(toRaw);
+
+  if (fromBuilding) {
+    const label = `${fromBuilding.name} (#${fromBuilding.num})`;
+    startPoint = { x: fromBuilding.x, z: fromBuilding.z, label };
+    document.getElementById('nav-from').value = label;
+  }
+  if (toBuilding) {
+    const label = `${toBuilding.name} (#${toBuilding.num})`;
+    endPoint = { x: toBuilding.x, z: toBuilding.z, label };
+    document.getElementById('nav-to').value = label;
+  }
+
+  // If both found, draw the route automatically
+  if (fromBuilding && toBuilding) {
+    const path = findPath(fromBuilding.x, fromBuilding.z, toBuilding.x, toBuilding.z);
+    if (path && path.length >= 2) {
+      drawRoute(path);
+      displayRouteInfo(path);
+    }
+  }
+}
+
 async function getAgentDirections() {
   const questionInput = document.getElementById('nav-question');
   const question = questionInput.value.trim();
@@ -1268,6 +1378,8 @@ async function getAgentDirections() {
     if (data.success) {
       // Display the AI directions
       displayAgentDirections(question, data.directions);
+      // Try to parse from/to from the question and set nav points
+      parseAndSetNavFromQuestion(question);
       showStatus('✅ Directions received from myTigerTrail AI!');
     } else {
       showStatus('❌ ' + (data.directions || 'Failed to get directions'));
@@ -1465,14 +1577,17 @@ function onClick(e) {
     scene.add(selectedArrow);
 
     // FIX #8 & #15: Use buildingIndex for reliable lookup
+    const idx = hit.userData.buildingIndex;
     if (navPanelOpen) {
-      const idx = hit.userData.buildingIndex;
       if (idx !== undefined && allBuildingData[idx]) {
         const b = allBuildingData[idx];
         const label = `${b.name} (#${b.num})`;
         const isStart = navClickMode === 'start';
         setNavPoint(b.x, b.z, label, isStart);
       }
+    } else if (idx !== undefined && allBuildingData[idx] && allBuildingData[idx].num === '18') {
+      // Library building — show live hours + room availability
+      openLibraryPanel();
     }
     return;
   }
@@ -1754,6 +1869,79 @@ function closeEventPopup() {
   document.getElementById('event-popup').classList.remove('show');
 }
 
+// ── Library panel ──
+
+let _libraryData = null;
+
+async function openLibraryPanel() {
+  const panel = document.getElementById('library-panel');
+  panel.classList.remove('loaded');
+  panel.classList.add('show');
+  document.getElementById('lib-loading').style.display = 'block';
+
+  if (!_libraryData) {
+    try {
+      const res = await fetch('/api/library');
+      _libraryData = await res.json();
+    } catch (e) {
+      document.getElementById('lib-loading').textContent = 'Could not load library data.';
+      return;
+    }
+  }
+  renderLibraryPanel(_libraryData, true);
+}
+
+function renderLibraryPanel(data, show = false) {
+  const panel = document.getElementById('library-panel');
+  if (show) { panel.classList.add('show'); }
+  const h = data.hours || {};
+  const r = data.rooms || {};
+
+  // Hours
+  const isOpen = h.open === true;
+  const badge = document.getElementById('lib-badge');
+  badge.textContent = isOpen ? 'Open' : (h.open === false ? 'Closed' : 'Unknown');
+  badge.className = isOpen ? 'open' : 'closed';
+  document.getElementById('lib-hours-text').textContent = h.hours || '';
+  document.getElementById('lib-hours-sub').textContent = isOpen && h.hours ? `Today: ${h.hours}` : '';
+
+  // Update quick button badge
+  const qb = document.getElementById('lib-quick-badge');
+  if (qb) {
+    qb.style.display = 'inline';
+    qb.textContent = isOpen ? 'Open' : 'Closed';
+    qb.style.background = isOpen ? '#e6f4ea' : '#fce8e6';
+    qb.style.color = isOpen ? '#1E8E3E' : '#D93025';
+    qb.style.border = isOpen ? '1px solid #b7dfc2' : '1px solid #f5c2be';
+  }
+
+  // Rooms
+  const avail = r.available;
+  const total = r.total || 22;
+  if (avail !== null && avail !== undefined) {
+    const pct = Math.round((avail / total) * 100);
+    document.getElementById('lib-rooms-fill').style.width = pct + '%';
+    document.getElementById('lib-rooms-fill').style.background =
+      pct > 50 ? 'var(--green)' : pct > 20 ? '#F9AB00' : 'var(--red)';
+    const slotLabel = r.next_slot
+      ? ` at ${r.next_slot.slice(11,16)}`
+      : '';
+    document.getElementById('lib-rooms-text').textContent =
+      `${avail} of ${total} rooms available${slotLabel}`;
+  } else {
+    document.getElementById('lib-rooms-fill').style.width = '100%';
+    document.getElementById('lib-rooms-fill').style.background = 'var(--border)';
+    document.getElementById('lib-rooms-text').textContent = `${total} rooms total — check libcal for availability`;
+  }
+
+  document.getElementById('lib-loading').style.display = 'none';
+  panel.classList.add('loaded');
+}
+
+function closeLibraryPanel() {
+  document.getElementById('library-panel').classList.remove('show');
+}
+
 // ── Fetch from backend ──
 
 async function loadCampusEvents() {
@@ -1836,6 +2024,8 @@ buildNavigationGraph();
 addTowerGlow();
 initSearch();
 loadCampusEvents();    // Fetch events & place 3D beacons
+// Pre-fetch library data so badge shows on load
+fetch('/api/library').then(r => r.json()).then(d => { _libraryData = d; renderLibraryPanel(d); }).catch(() => {});
 
 window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('click', onClick);

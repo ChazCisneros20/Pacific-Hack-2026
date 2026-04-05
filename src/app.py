@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from bs4 import BeautifulSoup
 from agent import get_directions
 from events import get_events
+from library import get_library_status
 import uvicorn
 
 # Initialize FastAPI application
@@ -174,6 +175,20 @@ async def campus_events(refresh: bool = False):
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
+
+
+@app.get("/api/library")
+async def library_status(refresh: bool = False):
+    """
+    Return live library hours and study room availability.
+    Sources: LibCal hours API + spaces availability grid.
+    Query param ?refresh=true forces a cache refresh.
+    """
+    try:
+        data = get_library_status(force_refresh=refresh)
+        return JSONResponse(status_code=200, content=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching library status: {str(e)}")
 
 
 @app.get("/health")
