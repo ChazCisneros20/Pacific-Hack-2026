@@ -5,127 +5,165 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>University of the Pacific — 3D Campus Map with Navigation</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+  /* ── Design tokens ── */
+  :root {
+    --blue:   #1A73E8;  --blue-lt:  #E8F0FE;  --blue-md: #4285F4;
+    --green:  #1E8E3E;  --green-lt: #E6F4EA;
+    --red:    #D93025;  --red-lt:   #FCE8E6;
+    --yellow: #F9AB00;  --yellow-lt:#FEF7E0;
+    --purple: #8430CE;  --purple-lt:#F3E8FD;
+    --text:   #202124;  --text2:    #5F6368;  --text3: #80868B;
+    --border: #DADCE0;  --surface:  #FFFFFF;  --bg: #F1F3F4;
+    --radius: 12px;     --radius-sm: 8px;     --radius-pill: 999px;
+    --shadow-sm: 0 1px 3px rgba(60,64,67,.15), 0 2px 6px rgba(60,64,67,.1);
+    --shadow-md: 0 2px 6px rgba(60,64,67,.15), 0 4px 16px rgba(60,64,67,.12);
+    --shadow-lg: 0 4px 12px rgba(60,64,67,.15), 0 8px 28px rgba(60,64,67,.12);
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { overflow: hidden; background: #f5f5f5; font-family: 'DM Sans', sans-serif; color: #2a2a2a; }
+  body { overflow: hidden; background: var(--bg); font-family: 'Google Sans', 'DM Sans', sans-serif; color: var(--text); }
   canvas { display: block; }
 
   /* ── HUD ── */
-  #hud { position: fixed; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
-  #hud h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #1a1a1a; text-shadow: 0 1px 2px rgba(255,255,255,.8); }
-  #hud .sub { font-size: 11px; color: rgba(0,0,0,.55); font-family: 'JetBrains Mono', monospace; margin-top: 3px; letter-spacing: 0.5px; }
+  #hud { position: fixed; top: 18px; left: 18px; z-index: 10; pointer-events: none; }
+  #hud h1 { font-size: 18px; font-weight: 700; letter-spacing: -.3px; color: var(--text); }
+  #hud .sub { font-size: 11px; color: var(--text3); font-family: 'Roboto Mono', monospace; margin-top: 2px; }
 
   /* ── Tooltip ── */
-  #tooltip { position: fixed; padding: 10px 14px; background: rgba(255,255,255,.94); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.12); border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity .12s ease; z-index: 20; max-width: 260px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  #tooltip { position: fixed; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); pointer-events: none; opacity: 0; transition: opacity .12s; z-index: 20; max-width: 240px; box-shadow: var(--shadow-md); }
   #tooltip.visible { opacity: 1; }
-  #tooltip .name { font-weight: 700; font-size: 13px; color: #1a1a1a; }
-  #tooltip .num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(0,0,0,.55); margin-top: 1px; }
-  #tooltip .zone { font-size: 11px; margin-top: 4px; padding: 2px 8px; border-radius: 4px; display: inline-block; }
+  #tooltip .name { font-weight: 600; font-size: 13px; color: var(--text); }
+  #tooltip .num { font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--text3); margin-top: 2px; }
+  #tooltip .zone { font-size: 11px; margin-top: 5px; padding: 2px 8px; border-radius: var(--radius-pill); display: inline-block; font-weight: 500; }
 
   /* ── Legend ── */
-  #legend { position: fixed; bottom: 20px; left: 20px; z-index: 10; background: rgba(255,255,255,.88); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.1); border-radius: 12px; padding: 14px 16px; font-size: 11px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
-  #legend h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.8px; color: rgba(0,0,0,.55); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
-  .leg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  #legend { position: fixed; bottom: 18px; left: 18px; z-index: 10; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 11px; box-shadow: var(--shadow-sm); }
+  #legend h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text3); margin-bottom: 8px; font-family: 'Roboto Mono', monospace; font-weight: 500; }
+  .leg-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; color: var(--text2); }
   .leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
   /* ── Controls hint ── */
-  #controls { position: fixed; bottom: 20px; right: 20px; z-index: 10; font-size: 10px; color: rgba(0,0,0,.35); font-family: 'JetBrains Mono', monospace; text-align: right; line-height: 1.8; }
+  #controls { position: fixed; bottom: 18px; right: 18px; z-index: 10; font-size: 10px; color: var(--text3); font-family: 'Roboto Mono', monospace; text-align: right; line-height: 1.9; }
 
   /* ── Search ── */
-  #search-box { position: fixed; top: 18px; right: 18px; z-index: 18; }
-  #search-box input { width: 190px; padding: 7px 10px; background: rgba(255,255,255,.85); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.12); border-radius: 8px; color: #1a1a1a; font-family: 'DM Sans', sans-serif; font-size: 12px; outline: none; transition: border-color .2s; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-  #search-box input::placeholder { color: rgba(0,0,0,.35); }
-  #search-box input:focus { border-color: rgba(220, 100, 20, .8); }
-  #search-results { margin-top: 4px; background: rgba(255,255,255,.92); backdrop-filter: blur(14px); border: 1px solid rgba(0,0,0,.1); border-radius: 8px; overflow: hidden; display: none; max-height: 220px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  #search-box { position: fixed; top: 16px; right: 16px; z-index: 18; }
+  #search-box input { width: 200px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--text); font-family: 'Google Sans', sans-serif; font-size: 13px; outline: none; transition: border-color .2s, box-shadow .2s; box-shadow: var(--shadow-sm); }
+  #search-box input::placeholder { color: var(--text3); }
+  #search-box input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,115,232,.15); }
+  #search-results { margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: none; max-height: 240px; overflow-y: auto; box-shadow: var(--shadow-md); }
   #search-results.show { display: block; }
-  .sr-item { padding: 7px 12px; font-size: 12px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.04); transition: background .15s; color: #1a1a1a; }
-  .sr-item:hover { background: rgba(0,0,0,.04); }
+  .sr-item { padding: 8px 14px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .12s; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .sr-item:hover { background: var(--blue-lt); }
   .sr-item:last-child { border-bottom: none; }
-  .sr-item .sr-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(0,0,0,.45); margin-right: 6px; }
+  .sr-item .sr-num { font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--text3); background: var(--bg); padding: 1px 5px; border-radius: 4px; }
 
   /* ── Loader ── */
-  #loader { position: fixed; inset: 0; z-index: 999; background: #f5f5f5; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s ease; }
+  #loader { position: fixed; inset: 0; z-index: 999; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .5s; }
   #loader.fade { opacity: 0; pointer-events: none; }
-  #loader h2 { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
-  #loader p { font-size: 12px; color: rgba(0,0,0,.55); font-family: 'JetBrains Mono', monospace; }
-  .spinner { width: 28px; height: 28px; border: 2px solid rgba(0,0,0,.1); border-top-color: #dc6414; border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 16px; }
+  #loader h2 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  #loader p { font-size: 12px; color: var(--text3); font-family: 'Roboto Mono', monospace; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 18px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Navigation Panel ── */
-  #nav-panel { position: fixed; top: 56px; right: 16px; width: 240px; max-height: calc(100vh - 72px); overflow-y: auto; background: rgba(255,255,255,.92); backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,.1); border-radius: 12px; padding: 12px; z-index: 15; box-shadow: 0 8px 20px rgba(0,0,0,.1); }
+  /* ═══ NAVIGATION PANEL ═══ */
+  #nav-panel { position: fixed; top: 56px; right: 16px; width: 252px; max-height: calc(100vh - 72px); overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; z-index: 15; box-shadow: var(--shadow-md); }
   #nav-toggle { display: none; }
-  #nav-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #1a1a1a; display: flex; align-items: center; gap: 6px; }
-  #nav-panel h3::before { content: "→"; color: #dc6414; font-weight: 700; }
+
+  /* Panel title */
+  #nav-panel h3 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+  #nav-panel h3 .nav-icon { width: 26px; height: 26px; background: var(--blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+
+  /* Inputs */
   .nav-input-group { margin-bottom: 8px; }
-  .nav-input-group label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(0,0,0,.55); margin-bottom: 3px; font-family: 'JetBrains Mono', monospace; }
-  .nav-input-group input { width: 100%; padding: 7px 9px; background: rgba(0,0,0,.02); border: 1px solid rgba(0,0,0,.1); border-radius: 6px; color: #1a1a1a; font-size: 11px; outline: none; }
-  .nav-input-group input:focus { border-color: rgba(220, 100, 20, 0.6); background: rgba(0,0,0,.04); }
-  .nav-btn { width: 100%; padding: 8px; margin-top: 6px; background: linear-gradient(135deg, #dc6414, #d95a00); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: 11px; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; box-shadow: 0 4px 10px rgba(220, 100, 20, 0.22); }
-  .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(220, 100, 20, 0.32); }
-  .nav-btn.secondary { background: rgba(0,0,0,.05); color: #1a1a1a; margin-top: 5px; }
-  .nav-btn.secondary:hover { background: rgba(0,0,0,.1); }
-  .event-dropdown { border: 1px solid rgba(0,0,0,.08); border-radius: 10px; background: rgba(255,255,255,.96); box-shadow: 0 8px 18px rgba(0,0,0,.08); }
-  .event-dropdown select { width: 100%; border: none; outline: none; appearance: none; -webkit-appearance: none; background: transparent; }
-  .nav-status { margin-top: 10px; padding: 8px; background: rgba(220, 100, 20, 0.1); border-left: 3px solid #dc6414; border-radius: 4px; font-size: 10px; line-height: 1.4; color: rgba(0,0,0,.8); transition: opacity .3s; }
+  .nav-input-group label { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin-bottom: 4px; }
+  .nav-input-group input { width: 100%; padding: 8px 10px; background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; outline: none; font-family: 'Google Sans', sans-serif; transition: border-color .2s, box-shadow .2s; }
+  .nav-input-group input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,115,232,.12); background: var(--surface); }
+
+  /* Mode buttons */
+  .nav-mode-btns { display: flex; gap: 6px; margin-top: 6px; }
+  .nav-mode-btns button { flex: 1; padding: 7px 4px; font-size: 11px; font-weight: 600; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--bg); color: var(--text2); cursor: pointer; font-family: 'Google Sans', sans-serif; transition: all .15s; }
+  .nav-mode-btns button:hover { background: var(--surface); border-color: var(--blue-md); color: var(--blue); }
+  #btn-set-start.active { background: var(--green-lt); border-color: var(--green); color: var(--green); }
+  #btn-set-end.active   { background: var(--red-lt);   border-color: var(--red);   color: var(--red); }
+
+  /* Action buttons */
+  .nav-btn { width: 100%; padding: 9px; margin-top: 8px; border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 12px; cursor: pointer; transition: all .18s; font-family: 'Google Sans', sans-serif; letter-spacing: .2px; }
+  .nav-btn.primary  { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(26,115,232,.35); }
+  .nav-btn.primary:hover  { background: #1557b0; box-shadow: 0 4px 12px rgba(26,115,232,.45); transform: translateY(-1px); }
+  .nav-btn.ai-btn   { background: var(--purple); color: #fff; box-shadow: 0 2px 8px rgba(132,48,206,.3); }
+  .nav-btn.ai-btn:hover   { background: #6b24a8; transform: translateY(-1px); }
+  .nav-btn.secondary { background: var(--bg); color: var(--text2); border: 1.5px solid var(--border); margin-top: 6px; }
+  .nav-btn.secondary:hover { background: var(--surface); border-color: var(--red); color: var(--red); }
+
+  /* Divider */
+  .nav-divider { margin: 12px -14px; border: none; border-top: 1px solid var(--border); }
+
+  /* Status */
+  .nav-status { margin-top: 10px; padding: 8px 10px; background: var(--blue-lt); border-left: 3px solid var(--blue); border-radius: 6px; font-size: 11px; line-height: 1.4; color: var(--text); }
   .nav-status.hidden { display: none; }
-  .nav-status.flash { animation: statusFlash .5s ease; }
-  @keyframes statusFlash { 0%,100%{background:rgba(220,100,20,.1)} 50%{background:rgba(220,100,20,.25)} }
-  .route-info { margin-top: 10px; padding: 10px; background: rgba(0,0,0,.04); border-radius: 8px; font-size: 10px; }
+  .nav-status.flash { animation: statusFlash .4s ease; }
+  @keyframes statusFlash { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* Route info */
+  .route-info { margin-top: 10px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 11px; }
   .route-info.hidden { display: none; }
-  .route-info .distance { font-size: 16px; font-weight: 700; color: #dc6414; margin-bottom: 3px; }
-  .route-info .eta { color: rgba(0,0,0,.65); font-size: 10px; }
-  .route-steps { margin-top: 6px; max-height: 120px; overflow-y: auto; }
-  .step { padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,.05); display: flex; gap: 6px; align-items: flex-start; color: #1a1a1a; }
+  .route-info .distance { font-size: 20px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .route-info .eta { color: var(--text3); font-size: 11px; }
+  .route-steps { margin-top: 8px; max-height: 130px; overflow-y: auto; }
+  .step { padding: 5px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start; color: var(--text); }
   .step:last-child { border-bottom: none; }
-  .step-num { width: 14px; height: 14px; background: rgba(220, 100, 20, 0.15); color: #dc6414; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
-  .step-text { flex: 1; line-height: 1.3; }
+  .step-num { width: 16px; height: 16px; background: var(--blue); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-text { flex: 1; line-height: 1.35; font-size: 11px; }
 
-  /* ── Nav mode selector ── */
-  .nav-mode-btns { display: flex; gap: 4px; margin-top: 8px; }
-  .nav-mode-btns button { flex: 1; padding: 7px 4px; font-size: 10px; background: rgba(0,0,0,.04); border: 1px solid rgba(0,0,0,.08); border-radius: 6px; color: rgba(0,0,0,.6); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .15s; }
-  .nav-mode-btns button:hover { background: rgba(0,0,0,.08); }
-  .nav-mode-btns button.active { background: rgba(220, 100, 20, 0.15); border-color: rgba(220, 100, 20, 0.4); color: #dc6414; }
+  /* ═══ EVENTS PANEL ═══ */
+  #events-panel { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:18; display:flex; flex-direction:column; align-items:center; }
+  #events-toggle { padding:8px 20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-pill); font-size:13px; font-weight:600; cursor:pointer; box-shadow:var(--shadow-sm); font-family:'Google Sans',sans-serif; color:var(--text); transition:box-shadow .15s, background .15s; white-space:nowrap; display:flex; align-items:center; gap:8px; }
+  #events-toggle:hover { box-shadow:var(--shadow-md); background:var(--blue-lt); }
+  .live-dot { width:8px; height:8px; border-radius:50%; background:#D93025; flex-shrink:0; animation:pulse-dot 1.4s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.7)} }
 
-  /* ── Events Panel ── */
-  #events-panel { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:18; display:flex; flex-direction:column; align-items:center; }
-  #events-toggle { padding:7px 18px; background:rgba(255,255,255,.88); backdrop-filter:blur(14px); border:1px solid rgba(0,0,0,.12); border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); font-family:'DM Sans',sans-serif; color:#1a1a1a; transition:background .15s; white-space:nowrap; }
-  #events-toggle:hover { background:rgba(255,255,255,.98); }
-  .live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#ef4444; margin-right:6px; animation:pulse-dot 1.5s infinite; }
-  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
-  #events-list { margin-top:8px; width:500px; background:rgba(255,255,255,.96); backdrop-filter:blur(20px); border:1px solid rgba(0,0,0,.1); border-radius:12px; box-shadow:0 8px 28px rgba(0,0,0,.13); display:none; }
+  #events-list { margin-top:10px; width:520px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-lg); display:none; overflow:hidden; }
   #events-list.show { display:block; }
-  #events-list-header { padding:12px 16px 8px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(0,0,0,.06); }
-  #events-list-header h4 { font-size:13px; font-weight:700; color:#1a1a1a; margin:0; }
-  #events-list-header span { font-size:10px; color:rgba(0,0,0,.45); font-family:'JetBrains Mono',monospace; }
-  #events-filter { display:flex; gap:5px; flex-wrap:wrap; padding:8px 12px; border-bottom:1px solid rgba(0,0,0,.06); }
-  .filter-chip { padding:3px 10px; border-radius:12px; font-size:10px; font-weight:600; cursor:pointer; border:1px solid rgba(0,0,0,.1); background:rgba(0,0,0,.03); color:rgba(0,0,0,.6); transition:all .15s; font-family:'DM Sans',sans-serif; }
-  .filter-chip.active { background:rgba(220,100,20,.15); border-color:rgba(220,100,20,.4); color:#dc6414; }
-  #events-scroll { max-height:300px; overflow-y:auto; }
-  .event-card { padding:9px 14px; border-bottom:1px solid rgba(0,0,0,.05); display:flex; gap:10px; align-items:flex-start; cursor:pointer; transition:background .12s; }
-  .event-card:hover { background:rgba(0,0,0,.02); }
+  #events-list-header { padding:14px 16px 10px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); background:var(--bg); }
+  #events-list-header h4 { font-size:14px; font-weight:700; color:var(--text); margin:0; }
+  #events-list-header span { font-size:11px; color:var(--text3); background:var(--surface); padding:2px 8px; border-radius:var(--radius-pill); border:1px solid var(--border); }
+
+  /* Filter chips — Google-pill style */
+  #events-filter { display:flex; gap:6px; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--border); }
+  .filter-chip { padding:5px 13px; border-radius:var(--radius-pill); font-size:11px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); background:var(--surface); color:var(--text2); transition:all .15s; font-family:'Google Sans',sans-serif; }
+  .filter-chip:hover { background:var(--blue-lt); border-color:var(--blue-md); color:var(--blue); }
+  .filter-chip.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+  /* Event cards */
+  #events-scroll { max-height:320px; overflow-y:auto; }
+  .event-card { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:flex-start; transition:background .12s; }
+  .event-card:hover { background:var(--blue-lt); cursor:pointer; }
   .event-card:last-child { border-bottom:none; }
-  .ev-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+  .ev-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:5px; }
   .ev-body { flex:1; min-width:0; }
-  .ev-name { font-size:12px; font-weight:600; color:#1a1a1a; line-height:1.3; }
-  .ev-meta { font-size:10px; color:rgba(0,0,0,.45); margin-top:2px; font-family:'JetBrains Mono',monospace; }
-  .ev-loc { font-size:10px; color:rgba(0,0,0,.5); margin-top:1px; }
-  .ev-nav { font-size:9px; padding:3px 8px; background:rgba(220,100,20,.1); color:#dc6414; border:1px solid rgba(220,100,20,.3); border-radius:6px; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:600; flex-shrink:0; margin-top:2px; transition:background .15s; }
-  .ev-nav:hover { background:rgba(220,100,20,.22); }
-  #events-empty { padding:24px; text-align:center; color:rgba(0,0,0,.38); font-size:12px; }
+  .ev-name { font-size:13px; font-weight:600; color:var(--text); line-height:1.3; }
+  .ev-meta { font-size:11px; color:var(--text3); margin-top:2px; font-family:'Roboto Mono',monospace; }
+  .ev-loc  { font-size:11px; color:var(--text2); margin-top:2px; }
+  .ev-nav  { font-size:10px; padding:4px 10px; background:var(--blue); color:#fff; border:none; border-radius:var(--radius-pill); cursor:pointer; font-family:'Google Sans',sans-serif; font-weight:600; flex-shrink:0; margin-top:3px; transition:background .15s; white-space:nowrap; }
+  .ev-nav:hover { background:#1557b0; }
+  #events-empty { padding:28px; text-align:center; color:var(--text3); font-size:13px; }
 
   /* ── Event beacon popup ── */
-  #event-popup { position:fixed; z-index:25; width:255px; background:rgba(255,255,255,.97); backdrop-filter:blur(20px); border:1px solid rgba(0,0,0,.1); border-radius:12px; box-shadow:0 8px 28px rgba(0,0,0,.15); display:none; pointer-events:auto; }
+  #event-popup { position:fixed; z-index:25; width:265px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-lg); display:none; pointer-events:auto; overflow:hidden; }
   #event-popup.show { display:block; }
-  #event-popup-hdr { padding:9px 12px 7px; border-bottom:1px solid rgba(0,0,0,.07); display:flex; justify-content:space-between; align-items:center; gap:6px; }
-  #event-popup-title { font-size:11px; font-weight:700; color:#1a1a1a; flex:1; }
-  #event-popup-close { background:none; border:none; cursor:pointer; color:rgba(0,0,0,.4); font-size:15px; line-height:1; padding:0 2px; }
-  #event-popup-scroll { max-height:220px; overflow-y:auto; }
+  #event-popup-hdr { padding:10px 14px 8px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--bg); }
+  #event-popup-title { font-size:12px; font-weight:700; color:var(--text); flex:1; }
+  #event-popup-close { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; line-height:1; padding:0 2px; transition:color .12s; }
+  #event-popup-close:hover { color:var(--red); }
+  #event-popup-scroll { max-height:240px; overflow-y:auto; }
 
   /* ── Mode indicator ── */
-  #mode-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,.95); border: 1px solid rgba(220, 100, 20, 0.3); padding: 20px 30px; border-radius: 12px; pointer-events: none; opacity: 0; transition: opacity .3s; z-index: 100; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
-  #mode-indicator.visible { opacity: 1; }
-  #mode-indicator h4 { color: #dc6414; font-size: 14px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px; }
-  #mode-indicator p { color: rgba(0,0,0,.7); font-size: 12px; }
+  #mode-indicator { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--surface); border:1px solid var(--blue); padding:18px 28px; border-radius:var(--radius); pointer-events:none; opacity:0; transition:opacity .3s; z-index:100; text-align:center; box-shadow:var(--shadow-lg); }
+  #mode-indicator.visible { opacity:1; }
+  #mode-indicator h4 { color:var(--blue); font-size:13px; font-weight:700; margin-bottom:4px; text-transform:uppercase; letter-spacing:1.5px; }
+  #mode-indicator p { color:var(--text2); font-size:12px; }
 </style>
 </head>
 <body>
@@ -158,55 +196,42 @@
 
 <!-- Navigation UI -->
 <div id="nav-panel">
-  <h3>🐯 myTigerTrail Navigation</h3>
-  <div class="nav-tab-buttons">
-    <button id="nav-tab-directions" class="nav-tab active" onclick="toggleNavPanel('directions')">Directions</button>
-    <button id="nav-tab-events" class="nav-tab" onclick="toggleNavPanel('events')">Events</button>
+  <h3><span class="nav-icon">🗺</span> myTigerTrail</h3>
+
+  <!-- From / To -->
+  <div class="nav-input-group">
+    <label>From</label>
+    <input type="text" id="nav-from" placeholder="Click a building to set start…" readonly style="cursor:pointer">
   </div>
-
-  <div id="nav-directions-panel">
-    <div class="nav-input-group">
-      <label>From</label>
-      <input type="text" id="nav-from" placeholder="Click a building to set start…" readonly style="cursor:pointer;width:100%;padding:8px 10px;background:rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.1);border-radius:6px;color:#1a1a1a;font-size:12px;outline:none;">
-    </div>
-    <div class="nav-input-group">
-      <label>To</label>
-      <input type="text" id="nav-to" placeholder="Click a building to set end…" readonly style="cursor:pointer;width:100%;padding:8px 10px;background:rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.1);border-radius:6px;color:#1a1a1a;font-size:12px;outline:none;">
-    </div>
-    <div class="nav-mode-btns">
-      <button id="btn-set-start" class="active" onclick="setNavClickMode('start')">📍 Set Start</button>
-      <button id="btn-set-end" onclick="setNavClickMode('end')">🏁 Set End</button>
-    </div>
-    <button class="nav-btn" onclick="calculateRoute()" style="margin-top:10px">🗺️ Show Route</button>
-
-    <div style="margin:12px 0;border-top:1px solid rgba(0,0,0,.08);"></div>
-
-    <div class="nav-input-group">
-      <label>Ask AI for Directions</label>
-      <textarea id="nav-question" placeholder="How do I get from the library to the science building?" rows="2" style="width:100%;padding:8px 10px;background:rgba(0,0,0,.02);border:1px solid rgba(0,0,0,.1);border-radius:6px;color:#1a1a1a;font-size:12px;outline:none;resize:vertical;min-height:48px;"></textarea>
-    </div>
-    <button class="nav-btn" onclick="getAgentDirections()" style="margin-top:8px">🤖 Get AI Directions</button>
-    <button class="nav-btn secondary" onclick="clearRoute()">Clear</button>
-
-    <div id="route-info" class="route-info hidden">
-      <div class="distance" id="route-distance">Route</div>
-      <div class="eta" id="route-eta">Powered by myTigerTrail</div>
-      <div class="route-steps" id="route-steps"></div>
-    </div>
+  <div class="nav-input-group">
+    <label>To</label>
+    <input type="text" id="nav-to" placeholder="Click a building to set end…" readonly style="cursor:pointer">
   </div>
-
-  <div id="nav-events-panel" style="display:none;">
-    <div class="nav-input-group">
-      <label>Find Campus Events</label>
-      <button class="nav-btn secondary" style="width:100%; text-align:left; justify-content:flex-start;" onclick="toggleEventDropdown()">Browse events</button>
-      <div id="event-dropdown" class="event-dropdown" style="display:none; margin-top:8px; padding:10px;">
-        <select id="event-month" style="width:100%; padding:8px 10px; border:1px solid rgba(0,0,0,.1); border-radius:8px; background:#fff; color:#1a1a1a; font-size:12px;"></select>
-        <select id="event-item" style="display:none; width:100%; padding:8px 10px; border:1px solid rgba(0,0,0,.1); border-radius:8px; background:#fff; color:#1a1a1a; font-size:12px; margin-top:8px;"></select>
-      </div>
-    </div>
+  <div class="nav-mode-btns">
+    <button id="btn-set-start" class="active" onclick="setNavClickMode('start')">📍 Set Start</button>
+    <button id="btn-set-end" onclick="setNavClickMode('end')">🏁 Set End</button>
   </div>
+  <button class="nav-btn primary" onclick="calculateRoute()">🗺️ Show Route</button>
+
+  <hr class="nav-divider">
+
+  <!-- AI Directions -->
+  <div class="nav-input-group">
+    <label>Ask AI</label>
+    <textarea id="nav-question" placeholder="How do I get from the library to the gym?" rows="2"
+      style="width:100%;padding:8px 10px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'Google Sans',sans-serif;outline:none;resize:vertical;min-height:52px;transition:border-color .2s;"
+      onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+  </div>
+  <button class="nav-btn ai-btn" onclick="getAgentDirections()">🤖 Get AI Directions</button>
+  <button class="nav-btn secondary" onclick="clearRoute()">✕ Clear Route</button>
 
   <div id="nav-status" class="nav-status hidden"></div>
+
+  <div id="route-info" class="route-info hidden">
+    <div class="distance" id="route-distance">Route</div>
+    <div class="eta" id="route-eta">Powered by myTigerTrail</div>
+    <div class="route-steps" id="route-steps"></div>
+  </div>
 </div>
 
 <!-- Events Panel -->
@@ -1622,7 +1647,10 @@ function eventCardHTML(ev) {
     ? `onclick="focusEventBuilding(${ev.coords.x},${ev.coords.z},'${ev.coords.name.replace(/'/g,"\\'")}',event)"`
     : '';
   const navBtn = hasCoords
-    ? `<button class="ev-nav" onclick="navigateToEvent(${ev.coords.x},${ev.coords.z},'${ev.coords.name.replace(/'/g,"\\'")}');event.stopPropagation()">Take me there →</button>`
+    ? `<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+         <a class="ev-nav" href="${ev.url}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none;text-align:center">Take me there →</a>
+         <button class="ev-nav" style="background:var(--green,#1E8E3E);border-color:var(--green,#1E8E3E)" onclick="navigateToEvent(${ev.coords.x},${ev.coords.z},'${ev.coords.name.replace(/'/g,"\\'")}');event.stopPropagation()">Set Destination</button>
+       </div>`
     : `<a class="ev-nav" href="${ev.url}" target="_blank" onclick="event.stopPropagation()" style="text-decoration:none">View →</a>`;
   return `
     <div class="event-card" ${flyAttr} style="${hasCoords ? 'cursor:pointer' : ''}">
@@ -1679,26 +1707,33 @@ function renderEventCards(events) {
 }
 
 function navigateToEvent(x, z, name) {
-  // Set as navigation destination and fly camera there
+  // Set as destination marker
   endPoint = { x, z, label: name };
   if (endMarker) scene.remove(endMarker);
   const geo = new THREE.CylinderGeometry(0.6, 0.6, 0.3, 16);
-  const mat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.4 });
+  const mat = new THREE.MeshStandardMaterial({ color: 0xD93025, emissive: 0xD93025, emissiveIntensity: 0.4 });
   endMarker = new THREE.Mesh(geo, mat);
   endMarker.position.set(x, 0.15, z);
   scene.add(endMarker);
   document.getElementById('nav-to').value = name;
-  controls.flyTo(x, z);
-  // Close panels
+
+  // Close panels so map is visible
   document.getElementById('events-list').classList.remove('show');
   eventListOpen = false;
   closeEventPopup();
-  // Auto-route if start is set
+
+  // Auto-route if start is already set
   if (startPoint) {
     const path = findPath(startPoint.x, startPoint.z, x, z);
-    if (path && path.length >= 2) { drawRoute(path); displayRouteInfo(path); }
+    if (path && path.length >= 2) {
+      drawRoute(path);
+      displayRouteInfo(path);
+      showStatus(`✅ Route to ${name} drawn!`);
+    } else {
+      showStatus(`📍 Destination set: ${name}`);
+    }
   } else {
-    showStatus('Destination set! Now click a building to set your start.');
+    showStatus(`📍 Destination set: ${name} — now click a building to set your start.`);
     setNavClickMode('start');
   }
 }
