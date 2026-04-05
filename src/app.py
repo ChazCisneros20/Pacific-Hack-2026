@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from bs4 import BeautifulSoup
 from agent import get_directions
-import requests
+from events import get_events
 import uvicorn
 
 # Initialize FastAPI application
@@ -153,24 +153,27 @@ async def get_buildings():
 
 
 @app.get("/api/events")
-async def get_events():
+async def campus_events(refresh: bool = False):
     """
-    Get upcoming campus events grouped by month. Scrapes University of the Pacific events page,
-    filters to the current month through December, and returns event metadata for the frontend.
+    Return live UOP campus events scraped from pacific.edu/calendar.
+    Each event includes title, date, time, location, category, color, url,
+    and coords {x, z} for 3D map placement (None if off-campus).
+    Query param ?refresh=true forces a cache refresh.
     """
-    events = fetch_uop_events()
-    current_month = datetime.now().month
-    available_months = MONTHS[current_month - 1 :]
-    grouped_events = group_events_by_month(events)
-
-    return JSONResponse(
-        status_code=200,
-        content={
-            "months": available_months,
-            "eventsByMonth": grouped_events,
-            "success": True,
-        }
-    )
+    try:
+        events = get_events(force_refresh=refresh)
+        on_campus  = [e for e in events if e["coords"] is not None]
+        off_campus = [e for e in events if e["coords"] is None]
+        return JSONResponse(status_code=200, content={
+            "events":      events,
+            "on_campus":   on_campus,
+            "off_campus":  off_campus,
+            "total":       len(events),
+            "mapped":      len(on_campus),
+            "success":     True,
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
 
 
 @app.get("/health")

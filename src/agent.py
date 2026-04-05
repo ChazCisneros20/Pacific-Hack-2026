@@ -2,7 +2,6 @@ import os
 import base64
 from pathlib import Path
 from ollama import chat
-from pdf2image import convert_from_path
 from io import BytesIO
 import fitz  # PyMuPDF for PDF text extraction
 
